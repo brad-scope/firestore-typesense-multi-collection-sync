@@ -169,7 +169,7 @@ params:
         value: australia-southeast2
     default: us-central1
     required: true
-    immutable: true
+    immutable: false
 
   - param: FIRESTORE_DATABASE_REGION
     label: Firestore Database region
@@ -275,7 +275,7 @@ params:
         value: africa-south1
     default: nam5
     required: true
-    immutable: true
+    immutable: false
 
   - param: DATABASE
     label: Firestore Database
@@ -294,7 +294,6 @@ params:
     validationErrorMessage: Firestore collection paths must be an odd number of segments separated by slashes, e.g. "path/to/firestore_collection".
     default: path/to/firestore_collection
     required: true
-    immutable: true
   - param: FIRESTORE_COLLECTION_FIELDS
     label: Firestore Collection Fields
     description: >-
