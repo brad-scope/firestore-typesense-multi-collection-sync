@@ -294,7 +294,6 @@ params:
     validationErrorMessage: Firestore collection paths must be an odd number of segments separated by slashes, e.g. "path/to/firestore_collection".
     default: path/to/firestore_collection
     required: true
-    immutable: false
   - param: FIRESTORE_COLLECTION_FIELDS
     label: Firestore Collection Fields
     description: >-
