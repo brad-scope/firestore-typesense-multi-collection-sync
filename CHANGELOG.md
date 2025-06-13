@@ -1,3 +1,7 @@
+## Version 2.1.0
+
+- Allow region configuration to be mutable
+
 ## Version 2.0.1
 
 - Support for syncing data from sub-collections
