@@ -2,7 +2,7 @@
 
 A enhanced Firebase extension for syncing multiple Firestore collections to [Typesense](https://typesense.org/), enabling full-text fuzzy search on your Firestore data with typo tolerance, faceting, filtering, sorting, curation, synonyms, geosearch and more.
 
-This extension is a fork and enhancement of the [original Typesense Firebase extension](https://github.com/typesense/firestore-typesense-search), modified by [Brad Mallow](https://github.com/bradmallow) at [Scope Inspections](https://getscope.ai) to better support multi-collection synchronization and additional configuration options.
+This extension is a fork and enhancement of the [original Typesense Firebase extension](https://github.com/typesense/firestore-typesense-search), modified by [Brad Mallow](https://github.com/briznad) at [Scope Inspections](https://getscope.ai) to better support multi-collection synchronization and additional configuration options.
 
 ## 🎯 Key Enhancements
 
