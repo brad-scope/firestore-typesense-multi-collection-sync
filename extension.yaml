@@ -65,13 +65,15 @@ resources:
     description: >-
       A scheduled function that automatically syncs all configured collections to Typesense
       at the interval specified by SCHEDULED_SYNC_INTERVAL parameter.
-    type: firebaseextensions.v1beta.function
+    type: firebaseextensions.v1beta.v2function
     properties:
       location: ${LOCATION}
-      runtime: nodejs22
+      buildConfig:
+        runtime: nodejs22
       sourceDirectory: functions
-      timeout: 540s
-      availableMemoryMb: 2048
+      serviceConfig:
+        timeoutSeconds: 540
+        availableMemory: 2048M
       scheduleTrigger:
         schedule: ${SCHEDULED_SYNC_INTERVAL}
 
