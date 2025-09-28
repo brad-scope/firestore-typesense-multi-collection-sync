@@ -90,7 +90,7 @@ async function syncDocument(documentPath, collectionConfig, typesense) {
 
     if (!docSnapshot.exists) {
       info(`Document ${documentPath} does not exist, skipping`);
-      return;
+      return {success: false, error: "Document does not exist"};
     }
 
     const pathSegments = documentPath.split("/");
@@ -122,9 +122,10 @@ async function syncDocument(documentPath, collectionConfig, typesense) {
       .upsert(typesenseDocument);
 
     info(`Successfully synced document ${documentPath} to Typesense collection ${collectionConfig.typesenseCollection}`);
+    return {success: true, documentId: docId};
   } catch (err) {
     error(`Failed to sync document ${documentPath}`, err);
-    throw err;
+    return {success: false, error: err.message};
   }
 }
 
@@ -161,6 +162,7 @@ async function syncCollection(collectionConfig, typesense, specificPath = null) 
 
   let lastDoc = null;
   let totalImported = 0;
+  let errors = [];
 
   do {
     const queryForThisBatch = lastDoc ? querySnapshot.startAfter(lastDoc) : querySnapshot;
@@ -202,6 +204,11 @@ async function syncCollection(collectionConfig, typesense, specificPath = null) 
       if ("importResults" in err) {
         logImportErrors(err.importResults);
       }
+      errors.push({
+        collection: collectionConfig.typesenseCollection,
+        error: err.message,
+        batch: `${currentDocumentsBatch[0]?.id} to ${lastDoc?.id}`
+      });
     }
 
     if (currentDocumentsBatch.length < config.typesenseBackfillBatchSize) {
@@ -213,6 +220,11 @@ async function syncCollection(collectionConfig, typesense, specificPath = null) 
   } while (lastDoc);
 
   info(`Done syncing ${totalImported} documents from ${pathToSync} to Typesense collection ${collectionConfig.typesenseCollection}`);
+  return {
+    success: errors.length === 0,
+    documentsProcessed: totalImported,
+    errors: errors
+  };
 }
 
 /**
@@ -225,7 +237,7 @@ async function processCustomPath(path, typesense) {
   path = path.trim();
 
   if (!path) {
-    return;
+    return {success: false, error: "Empty path"};
   }
 
   // Find matching collection configuration
@@ -233,7 +245,7 @@ async function processCustomPath(path, typesense) {
 
   if (!matchingConfig) {
     error(`Path "${path}" does not match any configured collection in COLLECTIONS_CONFIG. Skipping.`);
-    return;
+    return {success: false, error: "Path does not match any configured collection"};
   }
 
   // Determine if it's a document or collection path
@@ -242,11 +254,10 @@ async function processCustomPath(path, typesense) {
 
   if (isDocumentPath) {
     // This is a specific document
-    await syncDocument(path, matchingConfig, typesense);
+    return await syncDocument(path, matchingConfig, typesense);
   } else {
     // This is a collection or subcollection
-    // If the path exactly matches the config or if it's a specific instance of a wildcard pattern
-    await syncCollection(matchingConfig, typesense, path);
+    return await syncCollection(matchingConfig, typesense, path);
   }
 }
 
@@ -256,64 +267,183 @@ module.exports = onDocumentCreated("typesense_manual_sync/{documentId}", async (
     return;
   }
 
+  const documentRef = snapshot.ref;
   const triggerData = snapshot.data();
-  info(`Manual sync triggered by document ${event.params.documentId}`);
+  const documentId = event.params.documentId;
+
+  info(`Manual sync triggered by document ${documentId}`);
+
+  // Update document with sync start metadata
+  const startTime = new Date();
+  try {
+    await documentRef.update({
+      syncStatus: "in_progress",
+      syncStartedAt: startTime,
+      syncCompletedAt: null,
+      syncError: null,
+      syncResults: null
+    });
+  } catch (updateErr) {
+    error("Failed to update trigger document with start metadata", updateErr);
+  }
 
   const typesense = createTypesenseClient();
+  const syncResults = {
+    paths: [],
+    collections: [],
+    totalDocuments: 0,
+    totalErrors: 0,
+    startTime: startTime.toISOString()
+  };
 
-  // Check for custom paths in the trigger document
-  const customPaths = triggerData.paths;
+  try {
+    // Check for custom paths in the trigger document
+    const customPaths = triggerData.paths;
 
-  if (Array.isArray(customPaths) && customPaths.length > 0) {
-    // Process custom paths sequentially
-    info(`Processing ${customPaths.length} custom paths sequentially`);
+    if (Array.isArray(customPaths) && customPaths.length > 0) {
+      // Process custom paths sequentially
+      info(`Processing ${customPaths.length} custom paths sequentially`);
 
-    for (const path of customPaths) {
-      try {
-        await processCustomPath(path, typesense);
-      } catch (err) {
-        error(`Failed to process custom path: ${path}`, err);
-        // Continue to next path even if one fails
-      }
-    }
-
-    info("Done processing all custom paths");
-  } else {
-    // No custom paths specified, sync all configured collections
-    if (config.collectionsConfig && config.collectionsConfig.length > 0) {
-      info(`Syncing all ${config.collectionsConfig.length} configured collections sequentially`);
-
-      // Process each collection sequentially
-      for (const collectionConfig of config.collectionsConfig) {
+      for (const path of customPaths) {
         try {
-          await syncCollection(collectionConfig, typesense);
+          const result = await processCustomPath(path, typesense);
+          syncResults.paths.push({
+            path: path,
+            ...result
+          });
+          if (result.documentsProcessed) {
+            syncResults.totalDocuments += result.documentsProcessed;
+          }
+          if (result.errors && result.errors.length > 0) {
+            syncResults.totalErrors += result.errors.length;
+          }
         } catch (err) {
-          error(`Failed to sync collection ${collectionConfig.firestorePath}`, err);
-          // Continue to next collection even if one fails
+          error(`Failed to process custom path: ${path}`, err);
+          syncResults.paths.push({
+            path: path,
+            success: false,
+            error: err.message
+          });
+          syncResults.totalErrors++;
         }
       }
 
-      info("Done syncing all configured collections to Typesense");
-    } else if (config.firestoreCollectionPath) {
-      // Fallback to legacy single collection config for backward compatibility
-      info(
-        "Using legacy single collection configuration. Syncing " +
-          `${config.firestoreCollectionFields.join(",")} fields in Firestore documents ` +
-          `from ${config.firestoreCollectionPath} ` +
-          `into Typesense Collection ${config.typesenseCollectionName}`,
-      );
-
-      const legacyConfig = {
-        firestorePath: config.firestoreCollectionPath,
-        typesenseCollection: config.typesenseCollectionName,
-        firestoreFields: config.firestoreCollectionFields,
-      };
-
-      await syncCollection(legacyConfig, typesense);
+      info("Done processing all custom paths");
     } else {
-      error("No collection configuration found. Please configure either COLLECTIONS_CONFIG or the legacy FIRESTORE_COLLECTION_PATH.");
-      return false;
+      // No custom paths specified, sync all configured collections
+      if (config.collectionsConfig && config.collectionsConfig.length > 0) {
+        info(`Syncing all ${config.collectionsConfig.length} configured collections sequentially`);
+
+        // Process each collection sequentially
+        for (const collectionConfig of config.collectionsConfig) {
+          try {
+            const result = await syncCollection(collectionConfig, typesense);
+            syncResults.collections.push({
+              collection: collectionConfig.firestorePath,
+              typesenseCollection: collectionConfig.typesenseCollection,
+              ...result
+            });
+            if (result.documentsProcessed) {
+              syncResults.totalDocuments += result.documentsProcessed;
+            }
+            if (result.errors && result.errors.length > 0) {
+              syncResults.totalErrors += result.errors.length;
+            }
+          } catch (err) {
+            error(`Failed to sync collection ${collectionConfig.firestorePath}`, err);
+            syncResults.collections.push({
+              collection: collectionConfig.firestorePath,
+              typesenseCollection: collectionConfig.typesenseCollection,
+              success: false,
+              error: err.message
+            });
+            syncResults.totalErrors++;
+          }
+        }
+
+        info("Done syncing all configured collections to Typesense");
+      } else if (config.firestoreCollectionPath) {
+        // Fallback to legacy single collection config for backward compatibility
+        info(
+          "Using legacy single collection configuration. Syncing " +
+            `${config.firestoreCollectionFields.join(",")} fields in Firestore documents ` +
+            `from ${config.firestoreCollectionPath} ` +
+            `into Typesense Collection ${config.typesenseCollectionName}`,
+        );
+
+        const legacyConfig = {
+          firestorePath: config.firestoreCollectionPath,
+          typesenseCollection: config.typesenseCollectionName,
+          firestoreFields: config.firestoreCollectionFields,
+        };
+
+        try {
+          const result = await syncCollection(legacyConfig, typesense);
+          syncResults.collections.push({
+            collection: config.firestoreCollectionPath,
+            typesenseCollection: config.typesenseCollectionName,
+            ...result
+          });
+          if (result.documentsProcessed) {
+            syncResults.totalDocuments += result.documentsProcessed;
+          }
+          if (result.errors && result.errors.length > 0) {
+            syncResults.totalErrors += result.errors.length;
+          }
+        } catch (err) {
+          error("Failed to sync legacy collection", err);
+          syncResults.collections.push({
+            collection: config.firestoreCollectionPath,
+            typesenseCollection: config.typesenseCollectionName,
+            success: false,
+            error: err.message
+          });
+          syncResults.totalErrors++;
+        }
+      } else {
+        error("No collection configuration found. Please configure either COLLECTIONS_CONFIG or the legacy FIRESTORE_COLLECTION_PATH.");
+        syncResults.error = "No collection configuration found";
+      }
     }
+
+    // Calculate final sync results
+    const endTime = new Date();
+    syncResults.endTime = endTime.toISOString();
+    syncResults.duration = `${(endTime - startTime) / 1000}s`;
+    syncResults.success = syncResults.totalErrors === 0;
+
+    // Update document with sync completion metadata
+    try {
+      await documentRef.update({
+        syncStatus: syncResults.success ? "completed" : "completed_with_errors",
+        syncCompletedAt: endTime,
+        syncDuration: syncResults.duration,
+        syncResults: syncResults,
+        syncError: syncResults.totalErrors > 0 ? `${syncResults.totalErrors} errors occurred during sync` : null
+      });
+      info(`Updated trigger document ${documentId} with sync results`);
+    } catch (updateErr) {
+      error("Failed to update trigger document with completion metadata", updateErr);
+    }
+
+  } catch (unexpectedErr) {
+    // Handle any unexpected errors
+    error("Unexpected error during manual sync", unexpectedErr);
+    const endTime = new Date();
+
+    try {
+      await documentRef.update({
+        syncStatus: "failed",
+        syncCompletedAt: endTime,
+        syncDuration: `${(endTime - startTime) / 1000}s`,
+        syncError: unexpectedErr.message,
+        syncResults: syncResults
+      });
+    } catch (updateErr) {
+      error("Failed to update trigger document with error metadata", updateErr);
+    }
+
+    throw unexpectedErr;
   }
 });
 

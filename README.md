@@ -143,6 +143,43 @@ db.collection('typesense_manual_sync').add({
 - Processing is sequential to ensure order
 - Document ID in `typesense_manual_sync` can be anything
 
+#### Sync Status Tracking
+
+The trigger document is automatically updated with metadata during the sync process:
+
+**Status Fields Added:**
+- `syncStatus`: Current status (`in_progress`, `completed`, `completed_with_errors`, `failed`)
+- `syncStartedAt`: Timestamp when sync began
+- `syncCompletedAt`: Timestamp when sync finished
+- `syncDuration`: Total time taken (e.g., "45.2s")
+- `syncError`: Error message if sync failed or had errors
+- `syncResults`: Detailed results object containing:
+  - `paths`: Results for each custom path synced
+  - `collections`: Results for each collection synced
+  - `totalDocuments`: Total number of documents processed
+  - `totalErrors`: Total number of errors encountered
+  - `success`: Boolean indicating overall success
+
+**Example: Monitoring Sync Progress**
+```javascript
+// Create trigger document and get reference
+const docRef = await db.collection('typesense_manual_sync').add({
+  paths: ["users", "products"],
+  timestamp: new Date()
+});
+
+// Monitor the document for updates
+docRef.onSnapshot((snapshot) => {
+  const data = snapshot.data();
+  console.log('Sync Status:', data.syncStatus);
+
+  if (data.syncStatus === 'completed') {
+    console.log('Documents synced:', data.syncResults.totalDocuments);
+    console.log('Duration:', data.syncDuration);
+  }
+});
+```
+
 ### Scheduled Sync (`scheduled_sync`)
 
 Automatically syncs all configured collections at predefined intervals.
@@ -344,6 +381,7 @@ Apache-2.0 License - see LICENSE file for details
 - Initial release of multi-collection sync enhancement
 - Added JSON configuration for multiple collections
 - Enhanced manual sync with custom paths support
+- Added sync status tracking with real-time metadata updates
 - Added ID field preservation
 - Added optional path tracking
 - Added scheduled sync functionality with configurable intervals
