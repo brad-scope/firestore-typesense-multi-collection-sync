@@ -1,193 +1,328 @@
-# Firestore / Firebase Typesense Search Extension ⚡ 🔍 
+# Firestore Typesense Multi-Collection Sync Extension 🔄 🔍
 
-A Firebase extension to sync data from your Firestore collection to [Typesense](https://typesense.org/), 
-to be able to do full-text fuzzy search on your Firestore data, with typo tolerance, faceting, filtering, sorting, curation, synonyms, geosearch and more.
+A enhanced Firebase extension for syncing multiple Firestore collections to [Typesense](https://typesense.org/), enabling full-text fuzzy search on your Firestore data with typo tolerance, faceting, filtering, sorting, curation, synonyms, geosearch and more.
 
-This extension listens to your specified Firestore collection and syncs Firestore documents to Typesense 
-on creation, updates and deletes. It also provides a function to help you backfill data.
+This extension is a fork and enhancement of the [original Typesense Firebase extension](https://github.com/typesense/firestore-typesense-search), modified by [Brad Mallow](https://github.com/bradmallow) at [Scope Inspections](https://getscope.ai) to better support multi-collection synchronization and additional configuration options.
 
-**What is Typesense?**
+## 🎯 Key Enhancements
 
-If you're new to [Typesense](https://typesense.org), it is an open source search engine that is simple to use, run and scale, with clean APIs and documentation. Think of it as an open source alternative to Algolia and an easier-to-use, batteries-included alternative to ElasticSearch. Get a quick overview from [this guide](https://typesense.org/docs/guide).
+This enhanced version adds several critical features not available in the original extension:
 
+- **🔄 Multi-Collection Support**: Sync multiple Firestore collections from a single extension installation
+- **📝 JSON Configuration**: Define all collections in one JSON configuration parameter
+- **🎯 Selective Manual Sync**: Manually sync specific documents or collections on demand
+- **🆔 ID Field Preservation**: Preserves existing `id` fields by backing them up to `_id`
+- **📍 Path Tracking**: Optional `_path` field to track source Firestore document paths
+- **⚡ Improved Performance**: Single wildcard trigger with efficient path matching
 
-## ⚙️ Usage
+## 📋 Prerequisites
 
-### Step 1️⃣ : Setup Prerequisites
+Before installing this extension, ensure you have:
 
-Before installing this extension, make sure that you have:
+1. **A Cloud Firestore database** set up in your Firebase project
+   - For Google Workspace for Business users, ensure your default cloud compute service account has these IAM roles:
+     - Artifact Registry Administrator
+     - Artifact Registry Create-on-Push Writer
+     - Artifact Registry Service Agent
+     - Logs Writer
+     - Storage Object Viewer
 
-1. [Set up a Cloud Firestore database](https://firebase.google.com/docs/firestore/quickstart) in your Firebase project.
+2. **A Typesense cluster** either on:
+   - [Typesense Cloud](https://cloud.typesense.org) (managed service)
+   - [Self-Hosted](https://typesense.org/docs/guide/install-typesense.html) (free)
 
-   If using Google Workspace for Business, ensure that your default cloud compute based service account has the following roles (which can be found in the Google Cloud Console IAM section):
-   
-    * Artifact Registry Administrator
-    * Artifact Registry Create-on-Push Writer
-    * Artifact Registry Service Agent
-    * Logs Writer
-    * Storage Object Viewer
-2. [Set up](https://typesense.org/docs/guide/install-typesense.html) a Typesense cluster on [Typesense Cloud](https://cloud.typesense.org) or [Self-Hosted](https://typesense.org/docs/guide/install-typesense.html#option-2-local-machine-self-hosting) (free).
-3. Set up a Typesense Collection either through the Typesense Cloud dashboard or 
-  through the [API](https://typesense.org/docs/latest/api/collections.html#create-a-collection).
+3. **Pre-created Typesense Collections** for each Firestore collection you want to sync
+   > ⚠️ **Important**: This extension does NOT create Typesense collections automatically. You must create them via the Typesense dashboard or API before installing.
 
-> [!IMPORTANT]
-> ☝️ #3 above is a commonly missed step. This extension **does not create the Typesense Collection for you**. Instead it syncs data to a Typesense collection you've already created. If you see an HTTP 404 in the extension logs, it's most likely because of missing this step. 
+## 🚀 Installation
 
-### Step 2️⃣ : Install the Extension 
-
-You can install this extension either through the Firebase Web console or through the Firebase CLI.
-
-##### Firebase Console
-
-[![Install this extension in your Firebase project](https://www.gstatic.com/mobilesdk/210513_mobilesdk/install-extension.png "Install this extension in your Firebase project")][install-link]
-
-[install-link]: https://console.firebase.google.com/project/_/extensions/install?ref=typesense/firestore-typesense-search
-
-##### Firebase CLI
+### Via Firebase Console
 
 ```bash
-firebase ext:install typesense/firestore-typesense-search --project=[your-project-id]
+firebase ext:install scope-inspections/firestore-typesense-multi-collection-sync
 ```
 
-Learn more about installing extensions in the Firebase Extensions documentation: [Console](https://firebase.google.com/docs/extensions/install-extensions?platform=console), [CLI](https://firebase.google.com/docs/extensions/install-extensions?platform=cli).
+### Via Firebase CLI
 
-#### Syncing Multiple Firestore collections
+```bash
+firebase ext:install scope-inspections/firestore-typesense-multi-collection-sync --project=[your-project-id]
+```
 
-> [!TIP]
-> You can install this extension multiple times in your Firebase project by clicking on the installation link above multiple times, and use a different Firestore collection path in each installation instance. [Here](https://github.com/typesense/firestore-typesense-search/issues/9#issuecomment-885940705) is a screenshot of how this looks.
+## ⚙️ Configuration
 
+### Collections Configuration (COLLECTIONS_CONFIG)
 
-#### 🎛️ Configuration Parameters
+The most important configuration parameter. Define all collections to sync in a JSON array:
 
-When you install this extension, you'll be able to configure the following parameters:
+```json
+[
+  {
+    "firestorePath": "users",
+    "typesenseCollection": "users_index",
+    "firestoreFields": ["name", "email", "createdAt"]
+  },
+  {
+    "firestorePath": "products/*/reviews",
+    "typesenseCollection": "reviews_index",
+    "firestoreFields": []
+  },
+  {
+    "firestorePath": "orders",
+    "typesenseCollection": "orders_search",
+    "firestoreFields": ["orderNumber", "customer", "total", "status"]
+  }
+]
+```
 
-| Parameter                           | Description                                                                                                                                                                                                                                                                                    |
-|-------------------------------------|------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
-| Cloud Functions location            | Where do you want to deploy the functions created for this extension? You usually want a location close to your database. For help selecting a location, refer to the [location selection guide](https://firebase.google.com/docs/functions/locations).                                        |
-| Firestore Database region           | Where the Firestore Database that holds the Firestore collection you want to sync into Typesense is located. Refer to the [Cloud Firestore locations guide](https://firebase.google.com/docs/firestore/locations).                                                                             |
-| Firestore Collection Path           | The Firestore collection that needs to be indexed into Typesense.                                                                                                                                                                                                                              |
-| Firestore Collection Fields         | A comma separated list of fields that need to be indexed from each Firestore document. Leave blank to index all fields.                                                                                                                                                                        |
-| Typesense Hosts                     | A comma-separated list of Typesense Hosts (only domain without https or port number). For single node clusters, a single hostname is sufficient. For multi-node Highly Available or (Search Delivery Network) SDN Clusters, please be sure to mention all hostnames in a comma-separated list. | 
-| Typesense API Key                   | A Typesense API key with admin permissions. Click on "Generate API Key" in cluster dashboard in Typesense Cloud.                                                                                                                                                                               |
-| Typesense Collection Name           | Typesense collection name to index data into (you need to create this collection in Typesense yourself. This extension does not create the Typesense Collection for you).                                                                                                                      |
-| Flatten Nested Documents            | Should nested documents in Firestore be flattened before they are indexed in Typesense? Set to "Yes" for Typesense Server versions v0.23.1 and below, since indexing Nested objects is natively supported only in Typesense Server v0.24 and above.                                            |
-| Log Typesense Inserts for Debugging | Should data inserted into Typesense be logged in Cloud Logging? This can be useful for debugging, but should not be enabled in production.                                                                                                                                                     |
+**Configuration Properties:**
+- `firestorePath`: The Firestore collection path (supports wildcards with `*`)
+- `typesenseCollection`: Target Typesense collection name (must already exist)
+- `firestoreFields`: Array of fields to sync (empty array `[]` syncs all fields)
 
-> ⚠️ You'll notice that there is no way to configure the port number or protocol.
-This is because this extension only supports connecting to Typesense running HTTPS on Port 443, since your data goes from Firebase to Typesense over the public internet and we want your data to be encrypted in transit.
-For Typesense Cloud, HTTPS is already configured for you.
-> 
-> When self-hosting Typesense, you want to make sure you set `--api-port=443` and also get an SSL certificate from say [LetsEncrypt](https://letsencrypt.org/) or any registrar
-and configure Typesense to use it using the `--ssl-certificate` and `--ssl-certificate-key` [server parameters](https://typesense.org/docs/latest/api/server-configuration.html).
-> Alternatively, if you're running Typesense on your local machine, you can also set up a local HTTPS tunnel using something like [ngrok](https://ngrok.com/) (`ngrok http 8108`) and use the ngrok hostname in the extension. 
+### All Configuration Parameters
 
-##### Example
+| Parameter | Description | Required | Default |
+|-----------|-------------|----------|---------|
+| **COLLECTIONS_CONFIG** | JSON array of collection configurations | Yes | - |
+| **TYPESENSE_HOSTS** | Comma-separated list of Typesense hostnames (without protocol or port) | Yes | - |
+| **TYPESENSE_API_KEY** | Typesense API key with admin permissions | Yes | - |
+| **Cloud Functions location** | Deployment region for the functions | Yes | us-central1 |
+| **Firestore Database region** | Region of your Firestore database | Yes | nam5 |
+| **DATABASE** | Firestore database name | No | (default) |
+| **FLATTEN_NESTED_DOCUMENTS** | Flatten nested objects for Typesense <0.24 | No | false |
+| **LOG_TYPESENSE_INSERTS** | Log inserted documents for debugging | No | false |
+| **INCLUDE_FIRESTORE_PATH** | Include `_path` field with Firestore document path | No | false |
 
-If you have a Firestore database called `(default)` with a collection inside it called `users` in the `nam5` region like this:
+### Typesense Connection Requirements
 
-<img src="assets/firestore_db_example.png" alt="Firestore DB Example" width="800"/>
+⚠️ This extension only supports HTTPS connections on port 443 for security:
+- **Typesense Cloud**: Already configured with HTTPS
+- **Self-Hosted**: Configure with `--api-port=443` and SSL certificates
+- **Local Development**: Use ngrok or similar (`ngrok http 8108`)
 
-Here's the extension configuration screen with all the options filled out, if you want to sync the `users` Firestore collection to Typesense:
+## 🔄 How It Works
 
-<img src="assets/extension_configuration_example.png" alt="Firestore DB Example" width="500" />
+### Automatic Sync (`automatic_sync`)
 
-### Step 3️⃣ : [Optional] Backfill existing data
+Triggers automatically on any document change in configured collections:
+- **Create**: Adds new documents to Typesense
+- **Update**: Updates existing documents in Typesense
+- **Delete**: Removes documents from Typesense
 
-This extension only syncs data that was created or changed in Firestore, after it was installed. In order to backfill data that already exists in your Firestore collection to your Typesense Collection:
+The function uses a wildcard trigger (`{path=**}`) and efficiently filters for configured collections.
 
-- Create a new Firestore collection called `typesense_sync` through the Firestore UI.
-- Create a new document with the ID `backfill` and contents of `{trigger: true}`
-- [Optional] If you have [multiple instances](#syncing-multiple-firestore-collections) of the extension installed to sync multiple collections, you can specify which particular collections are backfilled by setting the contents of the `backfill` document in the previous step to `{trigger: true, firestore_collections: ["path/to/firestore_collection_1", "path/to/firestore_collection_2"] }`
+### Manual Sync (`manual_sync`)
 
-This will trigger the backfill background Cloud function, which will read data from your Firestore collection(s) and create equivalent documents in your Typesense collection.
+Triggered by creating a document in the `typesense_manual_sync` collection.
 
-## ☁️ Cloud Functions
+#### Sync All Configured Collections
+```javascript
+// Creates a document that triggers sync of all collections
+db.collection('typesense_manual_sync').add({
+  timestamp: new Date()
+});
+```
 
-* **indexOnWrite:** A function that indexes data into Typesense when it's triggered by Firestore changes.
+#### Sync Specific Paths
+```javascript
+db.collection('typesense_manual_sync').add({
+  paths: [
+    "users",                          // Entire users collection
+    "users/user123",                  // Specific user document
+    "products/prod456/reviews",       // All reviews for product prod456
+    "products/prod789/reviews/rev001" // Specific review document
+  ],
+  timestamp: new Date()
+});
+```
 
-* **backfill:** A function that backfills data from a Firestore collection into Typesense, triggered when a Firestore document with the path `typesense_sync/backfill` has the contents of `trigger: true`.
+**Important Notes:**
+- Paths must match collections defined in `COLLECTIONS_CONFIG`
+- Unmatched paths are skipped with an error message
+- Processing is sequential to ensure order
+- Document ID in `typesense_manual_sync` can be anything
 
+## 🔍 Special Fields
 
-## 🔑 Access Required
+### ID Field Handling
 
-This extension will operate with the following project IAM roles:
+The extension intelligently handles ID fields:
+- Firestore document ID → Typesense `id` field
+- Existing `id` field in data → Preserved as `_id`
 
-* datastore.user (Reason: Required to backfill data from your Firestore collection into Typesense)
+**Example:**
+```javascript
+// Firestore document
+Path: users/user123
+Data: { name: "John", id: "employee456" }
 
-## 🧾 Billing
+// Typesense document
+{
+  id: "user123",        // Firestore document ID
+  _id: "employee456",   // Original id field preserved
+  name: "John"
+}
+```
 
-To install an extension, your project must be on the [Blaze (pay as you go) plan](https://firebase.google.com/pricing).
+### Path Field (Optional)
 
-- You will be charged a small amount (typically around $0.01/month) for the Firebase resources required by this extension (even if it is not used).
-- This extension uses other Firebase and Google Cloud Platform services, which have associated charges if you exceed the service’s free tier:
-  - Cloud Firestore
-  - Cloud Functions (Node.js 14+ runtime. [See FAQs](https://firebase.google.com/support/faq#expandable-24))
-- Usage of this extension also requires you to have a running Typesense cluster either on Typesense Cloud or some
-  self-hosted server. You are responsible for any associated costs with these services.
+When `INCLUDE_FIRESTORE_PATH` is enabled:
+```javascript
+// Typesense document includes
+{
+  // ... other fields
+  _path: "users/user123"  // Full Firestore path
+}
+```
 
+## 📊 Use Cases
 
-## Development Workflow
+### 1. E-commerce Platform
+```json
+[
+  {
+    "firestorePath": "products",
+    "typesenseCollection": "products_search",
+    "firestoreFields": ["name", "description", "price", "category"]
+  },
+  {
+    "firestorePath": "products/*/reviews",
+    "typesenseCollection": "reviews_search",
+    "firestoreFields": []
+  }
+]
+```
 
-#### Run Emulator
+### 2. Multi-tenant SaaS
+```json
+[
+  {
+    "firestorePath": "tenants/*/users",
+    "typesenseCollection": "all_users_search",
+    "firestoreFields": ["email", "name", "role", "tenantId"]
+  },
+  {
+    "firestorePath": "tenants/*/documents",
+    "typesenseCollection": "all_documents_search",
+    "firestoreFields": ["title", "content", "tags", "tenantId"]
+  }
+]
+```
 
-```shell
+### 3. Content Management
+```json
+[
+  {
+    "firestorePath": "articles",
+    "typesenseCollection": "articles_search",
+    "firestoreFields": ["title", "content", "author", "publishedAt"]
+  },
+  {
+    "firestorePath": "authors",
+    "typesenseCollection": "authors_search",
+    "firestoreFields": ["name", "bio", "expertise"]
+  }
+]
+```
+
+## 🔧 Development & Testing
+
+### Local Development
+```bash
+# Start emulators
 npm run emulator
 npm run typesenseServer
+
+# Run tests
+npm test
+
+# Specific test suites
+npm run test:flattened
+npm run test:unflattened
+npm run test:subcollection
 ```
 
-- Emulator UI will be accessible at http://localhost:4000.
-- Local Typesense server will be accessible at http://localhost:8108
+### Code Quality
+```bash
+# Linting
+npm run lint
+npm run lint:fix
 
-Add records in the Firestore UI and they should be created in Typesense.
-
-#### Run Integration Tests
-
-```shell
-npm run test
+# Formatting
+npm run format
+npm run format:check
 ```
 
-#### Generate README
+## 🐛 Troubleshooting
 
-The Firebase CLI provides the following convenience command to auto-generate a README file containing content
-pulled from extension.yaml file and PREINSTALL.md file:
+### Common Issues
 
-```shell
-firebase ext:info ./ --markdown > README.md
-```
+**1. HTTP 404 Errors**
+- Cause: Typesense collection doesn't exist
+- Solution: Create the collection in Typesense before syncing
 
-#### Publish Extension
+**2. Documents Not Syncing**
+- Check if the path matches a configured collection
+- Verify field names match between Firestore and Typesense schema
+- Check extension logs for validation errors
 
-- Update version number in extension.yaml
-- Add entry to CHANGELOG.md
-- Create release in GitHub
-- 
-    ```shell
-    firebase ext:dev:upload typesense/firestore-typesense-search
-    ```
+**3. Manual Sync Not Triggering**
+- Ensure document is created in `typesense_manual_sync` collection
+- Check that paths match exactly with configured collections
+- Verify the extension has proper permissions
 
-## ℹ️ Support
+**4. Missing Fields in Typesense**
+- Check `firestoreFields` configuration
+- Empty array `[]` syncs all fields
+- Specified fields array limits to those fields only
 
-Please read through the FAQ below, search through [past GitHub issues](https://github.com/search?q=repo%3Atypesense%2Ffirestore-typesense-search+repo%3Atypesense%2Ftypesense+firebase&type=issues), past threads in our [knowledge base](https://threads.typesense.org) and if you're unable to find an answer, please open a GitHub issue in this repo or join our [Slack community](https://join.slack.com/t/typesense-community/shared_invite/zt-2fetvh0pw-ft5y2YQlq4l_bPhhqpjXig) and ask there.
+## 📝 Migration from Original Extension
 
-#### FAQs
+If migrating from the original Typesense extension:
 
-- **My Typesense collection is empty, even after installing the extension. What could be wrong?**
+1. **Export your configuration** from the old extension
+2. **Create the JSON configuration** for COLLECTIONS_CONFIG
+3. **Uninstall the old extensions** (if you had multiple for different collections)
+4. **Install this extension** with the new configuration
+5. **Run manual sync** to ensure all documents are in sync
 
-   The extension only syncs changes from your Firestore collection _from the time when it is installed_. To backfill existing data from your Firestore collection into Typesense, you want to run the backfill step described [here](#step-3%EF%B8%8F⃣--optional-backfill-existing-data).
+## 🤝 Contributing
 
-- **My Typesense collection is missing some records. What could be wrong?**
+This is an open-source project. Contributions are welcome!
 
-  This almost always is because the collection schema in Typesense does not match the structure of the documents in Firebase, and so Typesense is rejecting the documents due to validation failure.
-  All validation errors returned by Typesense are logged in detail in the Firebase extension logs, which are accessible via the Firebase web console. You want to search the logs for both the backfill function and also the indexing function from this extension.
+1. Fork the repository
+2. Create your feature branch
+3. Commit your changes
+4. Push to the branch
+5. Open a Pull Request
 
-- **The backfill function is not getting triggered. What could be wrong?**
+## 📄 License
 
-  The backfill function watches for changes to a document with ID called `backfill`, in a Firestore collection called `typesense_sync`. This document should have a key called `trigger` with a boolean value of `true`. So if you've already created this key, you want to change its value to `false` and then change it back to `true` to re-trigger the backfill function.
+Apache-2.0 License - see LICENSE file for details
 
-- **How do I sync multiple collections?**
+## 🙏 Acknowledgments
 
-  You can install this extension multiple times and set a different Firestore collection path for each instance. Read more [here](#syncing-multiple-firestore-collections)
+- Original extension by [Typesense](https://typesense.org/)
+- Enhanced by [Brad Mallow](https://github.com/bradmallow) at [Scope Inspections](https://getscope.ai)
+- Built for the Firebase and Typesense community
 
-- **How do I backfill just a single collection, when I've installed the extension multiple times?**
+## 📞 Support
 
-  See the last bullet point under the backfilling instructions [here](#step-3%EF%B8%8F⃣--optional-backfill-existing-data)
+- **Issues**: [GitHub Issues](https://github.com/scope-inspections/firestore-typesense-multi-collection-sync/issues)
+- **Original Extension**: [Typesense Firebase Extension](https://github.com/typesense/firestore-typesense-search)
+- **Typesense Community**: [Slack](https://join.slack.com/t/typesense-community/shared_invite/zt-2fetvh0pw-ft5y2YQlq4l_bPhhqpjXig)
+
+## 🔄 Changelog
+
+### Version 1.0.0 (2024)
+- Initial release of multi-collection sync enhancement
+- Added JSON configuration for multiple collections
+- Enhanced manual sync with custom paths support
+- Added ID field preservation
+- Added optional path tracking
+- Improved wildcard pattern matching
+- Sequential processing for reliability
+
+---
+
+*This extension is a third-party enhancement and is not officially maintained by Typesense. For the original extension, please visit the [official Typesense repository](https://github.com/typesense/firestore-typesense-search).*

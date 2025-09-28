@@ -145,7 +145,19 @@ exports.typesenseDocumentFromSnapshot = async (firestoreDocumentSnapshot, contex
   // using flat to flatten nested objects for older versions of Typesense that did not support nested fields
   // https://typesense.org/docs/0.22.2/api/collections.html#indexing-nested-fields
   const typesenseDocument = config.shouldFlattenNestedDocuments ? flattenDocument(mappedDocument) : mappedDocument;
+
+  // Preserve existing 'id' field if present by moving it to '_id'
+  if (typesenseDocument.hasOwnProperty('id')) {
+    typesenseDocument._id = typesenseDocument.id;
+  }
+
+  // Set Firestore document ID as the Typesense document ID
   typesenseDocument.id = firestoreDocumentSnapshot.id;
+
+  // Add the document's full Firestore path if configured to do so
+  if (config.shouldIncludeFirestorePath) {
+    typesenseDocument._path = firestoreDocumentSnapshot.ref.path;
+  }
 
   if (contextParams && Object.entries(contextParams).length) {
     Object.entries(contextParams).forEach(([key, value]) => {

@@ -1,5 +1,5 @@
 require("dotenv").config();
 
-const {indexOnWrite} = require("./indexOnWrite.js");
-exports.indexOnWrite = indexOnWrite;
-exports.backfill = require("./backfill.js");
+const {automaticSync} = require("./automaticSync.js");
+exports.automatic_sync = automaticSync;
+exports.manual_sync = require("./manualSync.js");

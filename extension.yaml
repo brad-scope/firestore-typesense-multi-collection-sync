@@ -1,23 +1,23 @@
-name: firestore-typesense-search
-version: 2.1.0
+name: firestore-typesense-multi-collection-sync
+version: 1.0.0
 specVersion: v1beta # Firebase Extensions specification version (do not edit)
 
-displayName: Search Firestore with Typesense
-description: Indexes data from Firestore into Typesense for full-text search
+displayName: Multi-Collection Firestore to Typesense Sync
+description: Sync multiple Firestore collections to Typesense with enhanced configuration options
 
 license: Apache-2.0 # The license you want for the extension
 
 author:
-  authorName: Typesense
-  url: https://typesense.org
+  authorName: Brad Mallow (Scope Inspections)
+  url: https://getscope.ai
 
-sourceUrl: https://github.com/typesense/firebase-typesense-search-extension/tree/master
-releaseNotesUrl: https://github.com/typesense/firestore-typesense-search/releases
+sourceUrl: https://github.com/scope-inspections/firestore-typesense-multi-collection-sync
+releaseNotesUrl: https://github.com/scope-inspections/firestore-typesense-multi-collection-sync/releases
 
 billingRequired: true
 
 resources:
-  - name: indexOnWrite
+  - name: automatic_sync
     description: A function that indexes data into Typesense when it's triggered by Firestore changes
     type: firebaseextensions.v1beta.v2function
     properties:
@@ -34,13 +34,14 @@ resources:
           - attribute: database
             value: ${DATABASE}
           - attribute: document
-            value: ${FIRESTORE_COLLECTION_PATH}/{documentID}
+            value: "{path=**}"
             operator: match-path-pattern
 
-  - name: backfill
+  - name: manual_sync
     description: >-
-      A function that backfills data from a Firestore collection into Typesense,
-      triggered when a Firestore document with the path `typesense_sync/backfill` has the contents of `trigger: true`.
+      A function that syncs data from Firestore to Typesense,
+      triggered when any document is created in the `typesense_manual_sync` collection.
+      Supports custom paths via the `paths` field or syncs all configured collections by default.
     type: firebaseextensions.v1beta.v2function
     properties:
       location: ${LOCATION}
@@ -51,13 +52,13 @@ resources:
         timeoutSeconds: 540
         availableMemory: 2048M
       eventTrigger:
-        eventType: google.cloud.firestore.document.v1.written
+        eventType: google.cloud.firestore.document.v1.created
         triggerRegion: ${FIRESTORE_DATABASE_REGION}
         eventFilters:
           - attribute: database
             value: ${DATABASE}
           - attribute: document
-            value: typesense_sync/backfill
+            value: typesense_manual_sync/{documentId}
             operator: match-path-pattern
 
 roles:
@@ -285,22 +286,30 @@ params:
     default: "(default)"
     required: false
 
-  - param: FIRESTORE_COLLECTION_PATH
-    label: Firestore Collection Path
+  - param: COLLECTIONS_CONFIG
+    label: Collections Configuration
     description: >-
-      The Firestore collection that needs to be indexed into Typesense.
-    example: path/to/firestore_collection
-    validationRegex: "^[^/]+(/[^/]+/[^/]+)*$"
-    validationErrorMessage: Firestore collection paths must be an odd number of segments separated by slashes, e.g. "path/to/firestore_collection".
-    default: path/to/firestore_collection
+      JSON array of collection configurations. Each object must have:
+      - firestorePath: The Firestore collection path (supports wildcards like products/*/reviews)
+      - typesenseCollection: Target Typesense collection name
+      - firestoreFields: (optional) Array of field names to sync, leave empty array for all fields
+    example: |
+      [
+        {
+          "firestorePath": "users",
+          "typesenseCollection": "users_index",
+          "firestoreFields": ["name", "email", "createdAt"]
+        },
+        {
+          "firestorePath": "products/*/reviews",
+          "typesenseCollection": "reviews_index",
+          "firestoreFields": []
+        }
+      ]
+    validationRegex: '^\[(\s*\{\s*"firestorePath"\s*:\s*"[^"]+"\s*,\s*"typesenseCollection"\s*:\s*"[^"]+"\s*(,\s*"firestoreFields"\s*:\s*\[[^\]]*\])?\s*\}\s*,?\s*)*\]$'
+    validationErrorMessage: Must be a valid JSON array with objects containing firestorePath, typesenseCollection, and optionally firestoreFields
+    default: '[{"firestorePath": "path/to/collection", "typesenseCollection": "collection_name", "firestoreFields": []}]'
     required: true
-  - param: FIRESTORE_COLLECTION_FIELDS
-    label: Firestore Collection Fields
-    description: >-
-      A comma separated list of fields that need to be indexed from each Firestore document. Leave blank to index all fields.
-    example: field1,field2,field3
-    default: ""
-    required: false
   - param: TYPESENSE_HOSTS
     label: Typesense Hosts
     description: >-
@@ -316,12 +325,6 @@ params:
       An Typesense API key with admin permissions.
       Click on "Generate API Key" in cluster dashboard in Typesense Cloud
     example: ""
-    required: true
-  - param: TYPESENSE_COLLECTION_NAME
-    label: Typesense Collection Name
-    description: >-
-      Typesense collection name to index data into. This collection needs to exist before this extension is installed. Please create it via the Typesense Cloud dashboard or API.
-    default: companies
     required: true
   - param: FLATTEN_NESTED_DOCUMENTS
     label: Flatten Nested Documents
@@ -340,6 +343,19 @@ params:
     label: Log Typesense Inserts for Debugging
     description: >-
       Should data inserted into Typesense be logged in Cloud Logging? This can be useful for debugging, but should not be enabled in production.
+    type: select
+    options:
+      - label: No
+        value: false
+      - label: Yes
+        value: true
+    default: false
+    required: false
+  - param: INCLUDE_FIRESTORE_PATH
+    label: Include Firestore Document Path
+    description: >-
+      Should the Firestore document path be included as a '_path' field in Typesense?
+      This is useful for debugging and reverse lookups from Typesense to Firestore.
     type: select
     options:
       - label: No
