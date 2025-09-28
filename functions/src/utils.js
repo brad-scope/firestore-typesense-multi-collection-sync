@@ -228,10 +228,31 @@ exports.pathMatchesSelector = function (path, selector) {
     if (selectorSegment.startsWith("{") && selectorSegment.endsWith("}")) {
       const placeholderName = selectorSegment.slice(1, -1); // Remove {}
       extractedValues[placeholderName] = pathSegment;
+    } else if (selectorSegment === "*") {
+      // Support asterisk wildcards
+      extractedValues[`param${Object.keys(extractedValues).length}`] = pathSegment;
     } else if (selectorSegment !== pathSegment) {
       return null;
     }
   }
 
   return extractedValues;
+};
+
+/**
+ * Check if a path contains wildcards (* or {paramName} format)
+ * @param {string} path - The path to check
+ * @returns {boolean} - True if path contains wildcards
+ */
+exports.hasWildcard = function (path) {
+  return path.includes("*") || /\{[^}]+\}/.test(path);
+};
+
+/**
+ * Convert {paramName} style wildcards to * for consistent handling
+ * @param {string} path - The path to normalize
+ * @returns {string} - Path with normalized wildcards
+ */
+exports.normalizeWildcards = function (path) {
+  return path.replace(/\{[^}]+\}/g, "*");
 };

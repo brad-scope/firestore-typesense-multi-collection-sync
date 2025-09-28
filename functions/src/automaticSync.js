@@ -11,10 +11,13 @@ const {onDocumentWritten} = require("firebase-functions/v2/firestore");
  * @returns {Object|null} - Matched parameters or null if no match
  */
 function matchCollectionPattern(documentPath, pattern) {
+  // First normalize the pattern to use * for all wildcards
+  const normalizedPattern = utils.normalizeWildcards(pattern);
+
   // Convert the pattern to a regex
   // Replace * wildcards with [^/]+ to match any segment except /
   // Escape other special regex characters
-  const regexPattern = pattern
+  const regexPattern = normalizedPattern
     .split("/")
     .map((segment) => {
       if (segment === "*") {
@@ -29,7 +32,7 @@ function matchCollectionPattern(documentPath, pattern) {
   const match = documentPath.match(regex);
 
   if (match) {
-    // Extract parameters from the path
+    // Extract parameters from the path using the original pattern
     const pathSegments = documentPath.split("/");
     const patternSegments = pattern.split("/");
     const params = {};
@@ -37,6 +40,9 @@ function matchCollectionPattern(documentPath, pattern) {
     patternSegments.forEach((segment, index) => {
       if (segment === "*" && pathSegments[index]) {
         params[`param${Object.keys(params).length}`] = pathSegments[index];
+      } else if (segment.startsWith("{") && segment.endsWith("}") && pathSegments[index]) {
+        const paramName = segment.slice(1, -1); // Remove {}
+        params[paramName] = pathSegments[index];
       }
     });
 

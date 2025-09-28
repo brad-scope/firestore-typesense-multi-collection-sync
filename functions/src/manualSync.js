@@ -11,6 +11,7 @@ admin.initializeApp({
   credential: admin.credential.applicationDefault(),
 });
 
+
 /**
  * Find the collection configuration that matches a given path
  * @param {string} path - The Firestore path to check
@@ -33,7 +34,8 @@ function findMatchingCollectionConfig(path) {
       }
 
       // Check pattern match with wildcards
-      const regexPattern = pattern
+      const normalizedPattern = utils.normalizeWildcards(pattern);
+      const regexPattern = normalizedPattern
         .split("/")
         .map((segment) => {
           if (segment === "*") {
@@ -54,7 +56,8 @@ function findMatchingCollectionConfig(path) {
       }
 
       // Check pattern match with wildcards
-      const regexPattern = pattern
+      const normalizedPattern = utils.normalizeWildcards(pattern);
+      const regexPattern = normalizedPattern
         .split("/")
         .map((segment) => {
           if (segment === "*") {
@@ -150,7 +153,7 @@ async function syncCollection(collectionConfig, typesense, specificPath = null) 
 
   const pathSegments = pathToSync.split("/").filter(Boolean);
   const pathPlaceholders = utils.parseFirestorePath(pathToSync);
-  const isGroupQuery = pathSegments.length > 1 && pathToSync.includes("*");
+  const isGroupQuery = pathSegments.length > 1 && utils.hasWildcard(pathToSync);
 
   let querySnapshot;
   if (isGroupQuery) {

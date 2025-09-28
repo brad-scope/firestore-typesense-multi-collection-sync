@@ -14,6 +14,7 @@ This enhanced version adds several critical features not available in the origin
 - **🆔 ID Field Preservation**: Preserves existing `id` fields by backing them up to `_id`
 - **📍 Path Tracking**: Optional `_path` field to track source Firestore document paths
 - **⚡ Improved Performance**: Single wildcard trigger with efficient path matching
+- **🔗 Subcollection Support**: Full support for nested subcollections with wildcard patterns
 
 ## 📋 Prerequisites
 
@@ -67,6 +68,11 @@ The most important configuration parameter. Define all collections to sync in a 
     "firestoreFields": []
   },
   {
+    "firestorePath": "products/{productId}/reviews",
+    "typesenseCollection": "reviews_index_alt",
+    "firestoreFields": []
+  },
+  {
     "firestorePath": "orders",
     "typesenseCollection": "orders_search",
     "firestoreFields": ["orderNumber", "customer", "total", "status"]
@@ -75,9 +81,48 @@ The most important configuration parameter. Define all collections to sync in a 
 ```
 
 **Configuration Properties:**
-- `firestorePath`: The Firestore collection path (supports wildcards with `*`)
+- `firestorePath`: The Firestore collection path (supports wildcards - see below)
 - `typesenseCollection`: Target Typesense collection name (must already exist)
 - `firestoreFields`: Array of fields to sync (empty array `[]` syncs all fields)
+
+### 🔗 Subcollection Support & Wildcard Patterns
+
+This extension fully supports subcollections using wildcard patterns. Wildcards are **required** for subcollections to work properly.
+
+#### Supported Wildcard Syntaxes
+
+Both wildcard syntaxes are supported and functionally equivalent:
+
+1. **Asterisk Wildcard (`*`)**:
+   ```json
+   "firestorePath": "products/*/reviews"
+   ```
+
+2. **Parameter Wildcard (`{paramName}`)**:
+   ```json
+   "firestorePath": "products/{productId}/reviews"
+   ```
+
+#### Path Examples
+
+| Path Pattern | Type | Description |
+|--------------|------|-------------|
+| `users` | Collection | Top-level collection |
+| `products/*/reviews` | Subcollection | All reviews across all products |
+| `tenants/{tenantId}/users` | Subcollection | Users within each tenant |
+| `categories/*/items/*/variants` | Nested Subcollection | Multiple wildcard levels |
+| `users/user123` | Document | Specific document (manual sync only) |
+| `products/prod456/reviews/rev789` | Document | Specific nested document (manual sync only) |
+
+#### How Subcollections Work
+
+- **Automatic Detection**: The extension automatically detects whether a path refers to a collection or document based on segment count:
+  - Odd segments = Collection or subcollection (e.g., `users`, `products/*/reviews`)
+  - Even segments = Document (e.g., `users/user123`, `products/prod456/reviews/rev789`)
+
+- **Collection Group Queries**: When a wildcard pattern is detected in subcollections, the extension uses Firestore's collection group queries to efficiently find all matching documents across the hierarchy.
+
+- **Pattern Matching**: The extension validates that documents match the configured pattern before syncing, ensuring only intended documents are processed.
 
 ### All Configuration Parameters
 
@@ -249,8 +294,13 @@ When `INCLUDE_FIRESTORE_PATH` is enabled:
     "firestoreFields": ["name", "description", "price", "category"]
   },
   {
-    "firestorePath": "products/*/reviews",
+    "firestorePath": "products/{productId}/reviews",
     "typesenseCollection": "reviews_search",
+    "firestoreFields": ["rating", "comment", "userId", "createdAt"]
+  },
+  {
+    "firestorePath": "categories/*/products",
+    "typesenseCollection": "categorized_products",
     "firestoreFields": []
   }
 ]
@@ -260,9 +310,14 @@ When `INCLUDE_FIRESTORE_PATH` is enabled:
 ```json
 [
   {
-    "firestorePath": "tenants/*/users",
+    "firestorePath": "tenants/{tenantId}/users",
     "typesenseCollection": "all_users_search",
     "firestoreFields": ["email", "name", "role", "tenantId"]
+  },
+  {
+    "firestorePath": "tenants/{tenantId}/projects/{projectId}/tasks",
+    "typesenseCollection": "all_tasks_search",
+    "firestoreFields": ["title", "description", "assignee", "status"]
   },
   {
     "firestorePath": "tenants/*/documents",
@@ -326,12 +381,14 @@ npm run format:check
 
 **2. Documents Not Syncing**
 - Check if the path matches a configured collection
+- For subcollections, ensure you're using wildcard syntax (`*` or `{paramName}`)
 - Verify field names match between Firestore and Typesense schema
 - Check extension logs for validation errors
 
 **3. Manual Sync Not Triggering**
 - Ensure document is created in `typesense_manual_sync` collection
 - Check that paths match exactly with configured collections
+- For subcollections, wildcards in the configuration will match specific parent IDs in manual sync paths
 - Verify the extension has proper permissions
 
 **4. Missing Fields in Typesense**
@@ -385,7 +442,8 @@ Apache-2.0 License - see LICENSE file for details
 - Added ID field preservation
 - Added optional path tracking
 - Added scheduled sync functionality with configurable intervals
-- Improved wildcard pattern matching
+- Improved wildcard pattern matching with support for both `*` and `{paramName}` syntaxes
+- Full subcollection support with collection group queries
 - Sequential processing for reliability
 
 ---

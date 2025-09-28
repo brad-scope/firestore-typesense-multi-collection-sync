@@ -28,7 +28,7 @@ async function syncCollection(collectionConfig, typesense) {
 
   const pathSegments = collectionConfig.firestorePath.split("/").filter(Boolean);
   const pathPlaceholders = utils.parseFirestorePath(collectionConfig.firestorePath);
-  const isGroupQuery = pathSegments.length > 1 && collectionConfig.firestorePath.includes("*");
+  const isGroupQuery = pathSegments.length > 1 && utils.hasWildcard(collectionConfig.firestorePath);
 
   let querySnapshot;
   if (isGroupQuery) {
