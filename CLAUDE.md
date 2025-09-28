@@ -3,7 +3,7 @@
 This file provides guidance to Claude Code (claude.ai/code) when working with code in this repository.
 
 ## Overview
-This is a Firebase Extension that syncs data from Firestore collections to Typesense for full-text search capabilities. It consists of two main Cloud Functions: `indexOnWrite` (syncs changes) and `backfill` (bulk imports existing data).
+This is a Firebase Extension that syncs data from multiple Firestore collections to Typesense for full-text search capabilities. It consists of three main Cloud Functions: `automatic_sync` (syncs changes), `manual_sync` (bulk imports existing data), and `scheduled_sync` (periodic syncs).
 
 ## Development Commands
 
@@ -52,8 +52,9 @@ The extension is configured via `extension.yaml` which defines:
 
 ### Core Components
 
-1. **functions/src/indexOnWrite.js**: Listens to Firestore document changes and syncs to Typesense in real-time
-2. **functions/src/backfill.js**: Batch imports existing Firestore data when triggered via `typesense_sync/backfill` document
+1. **functions/src/automaticSync.js**: Listens to Firestore document changes and syncs to Typesense in real-time
+2. **functions/src/manualSync.js**: Batch imports existing Firestore data when triggered via `typesense_manual_sync` collection
+3. **functions/src/scheduledSync.js**: Periodically syncs all configured collections
 3. **functions/src/config.js**: Centralizes all environment variable configuration
 4. **functions/src/utils.js**: Handles document transformation (flattening, type conversions for timestamps/geopoints)
 5. **functions/src/createTypesenseClient.js**: Creates and configures the Typesense client
@@ -64,7 +65,7 @@ The extension is configured via `extension.yaml` which defines:
 - **Configurable flattening**: Supports both nested objects (Typesense v0.24+) and flattened documents (v0.23.1 and below)
 - **Batched backfill**: Uses 1000-document batches to prevent memory overflow on large collections
 - **Subcollection support**: Can sync nested Firestore subcollections to Typesense
-- **Multiple installations**: Can be installed multiple times to sync different collections
+- **Multi-collection support**: Single installation can sync multiple collections via JSON configuration
 
 ## Testing Approach
 
@@ -75,4 +76,4 @@ Tests use Firebase emulators with a local Typesense server running in Docker. Te
 1. Update version in `extension.yaml`
 2. Add entry to `CHANGELOG.md`
 3. Create GitHub release
-4. Run: `firebase ext:dev:upload typesense/firestore-typesense-search`
+4. Run: `firebase ext:dev:upload brad-scope/firestore-typesense-multi-sync`

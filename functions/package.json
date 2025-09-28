@@ -1,5 +1,5 @@
 {
-  "name": "firestore-typesense-multi-collection-sync-functions",
+  "name": "firestore-typesense-multi-sync-functions",
   "description": "Cloud Functions for Multi-Collection Firestore to Typesense Sync",
   "scripts": {
     "lint": "eslint .",

@@ -1,4 +1,4 @@
-name: firestore-typesense-multi-collection-sync
+name: firestore-typesense-multi-sync
 version: 1.0.0
 specVersion: v1beta # Firebase Extensions specification version (do not edit)
 
@@ -11,8 +11,8 @@ author:
   authorName: Brad Mallow (Scope Inspections)
   url: https://getscope.ai
 
-sourceUrl: https://github.com/brad-scope/firestore-typesense-multi-collection-sync
-releaseNotesUrl: https://github.com/brad-scope/firestore-typesense-multi-collection-sync/releases
+sourceUrl: https://github.com/brad-scope/firestore-typesense-multi-sync
+releaseNotesUrl: https://github.com/brad-scope/firestore-typesense-multi-sync/releases
 
 billingRequired: true
 

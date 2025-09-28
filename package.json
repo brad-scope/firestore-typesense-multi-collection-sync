@@ -1,5 +1,5 @@
 {
-  "name": "firestore-typesense-multi-collection-sync",
+  "name": "firestore-typesense-multi-sync",
   "description": "Enhanced Firebase extension for syncing multiple Firestore collections to Typesense",
   "scripts": {
     "emulator": "cross-env DOTENV_CONFIG=extensions/test-params-flatten-nested-false.local.env firebase emulators:start --import=emulator_data",

@@ -5,7 +5,7 @@
 This is a fork and major enhancement of the original Typesense Firebase extension by Brad Mallow at Scope Inspections.
 
 #### Breaking Changes
-- Extension renamed to `firestore-typesense-multi-collection-sync`
+- Extension renamed to `firestore-typesense-multi-sync`
 - Changed trigger mechanism for manual sync (now uses any document creation in `typesense_manual_sync`)
 - Functions renamed: `indexOnWrite` → `automatic_sync`, `backfill` → `manual_sync`
 
