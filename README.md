@@ -39,13 +39,13 @@ Before installing this extension, ensure you have:
 ### Via Firebase Console
 
 ```bash
-firebase ext:install scope-inspections/firestore-typesense-multi-collection-sync
+firebase ext:install brad-scope/firestore-typesense-multi-collection-sync
 ```
 
 ### Via Firebase CLI
 
 ```bash
-firebase ext:install scope-inspections/firestore-typesense-multi-collection-sync --project=[your-project-id]
+firebase ext:install brad-scope/firestore-typesense-multi-collection-sync --project=[your-project-id]
 ```
 
 ## ⚙️ Configuration
@@ -303,12 +303,12 @@ Apache-2.0 License - see LICENSE file for details
 ## 🙏 Acknowledgments
 
 - Original extension by [Typesense](https://typesense.org/)
-- Enhanced by [Brad Mallow](https://github.com/bradmallow) at [Scope Inspections](https://getscope.ai)
+- Enhanced by [Brad Mallow](https://github.com/briznad) at [Scope Inspections](https://getscope.ai)
 - Built for the Firebase and Typesense community
 
 ## 📞 Support
 
-- **Issues**: [GitHub Issues](https://github.com/scope-inspections/firestore-typesense-multi-collection-sync/issues)
+- **Issues**: [GitHub Issues](https://github.com/brad-scope/firestore-typesense-multi-collection-sync/issues)
 - **Original Extension**: [Typesense Firebase Extension](https://github.com/typesense/firestore-typesense-search)
 - **Typesense Community**: [Slack](https://join.slack.com/t/typesense-community/shared_invite/zt-2fetvh0pw-ft5y2YQlq4l_bPhhqpjXig)
 

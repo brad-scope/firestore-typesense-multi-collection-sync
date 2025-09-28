@@ -11,8 +11,8 @@ author:
   authorName: Brad Mallow (Scope Inspections)
   url: https://getscope.ai
 
-sourceUrl: https://github.com/scope-inspections/firestore-typesense-multi-collection-sync
-releaseNotesUrl: https://github.com/scope-inspections/firestore-typesense-multi-collection-sync/releases
+sourceUrl: https://github.com/brad-scope/firestore-typesense-multi-collection-sync
+releaseNotesUrl: https://github.com/brad-scope/firestore-typesense-multi-collection-sync/releases
 
 billingRequired: true
 
