@@ -74,8 +74,6 @@ resources:
       serviceConfig:
         timeoutSeconds: 540
         availableMemory: 2048M
-      scheduleTrigger:
-        schedule: ${SCHEDULED_SYNC_INTERVAL}
 
 roles:
   - role: datastore.user

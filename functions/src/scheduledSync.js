@@ -88,9 +88,14 @@ async function syncCollection(collectionConfig, typesense) {
 /**
  * Scheduled function that syncs all configured collections to Typesense
  */
+// Use a far-future schedule when disabled (effectively never runs)
+const schedule = (config.scheduledSyncInterval && config.scheduledSyncInterval !== "never")
+  ? config.scheduledSyncInterval
+  : "0 0 1 1 *"; // January 1st at midnight (runs once a year)
+
 module.exports = onSchedule(
   {
-    schedule: config.scheduledSyncInterval || "never",
+    schedule: schedule,
     timeZone: "UTC",
     retryConfig: {
       retryCount: 3,
@@ -99,7 +104,7 @@ module.exports = onSchedule(
     },
   },
   async (event) => {
-    // Check if scheduled sync is enabled
+    // Check if scheduled sync is actually enabled
     if (!config.scheduledSyncInterval || config.scheduledSyncInterval === "never") {
       info("Scheduled sync is disabled");
       return;
