@@ -92,6 +92,7 @@ The most important configuration parameter. Define all collections to sync in a 
 | **FLATTEN_NESTED_DOCUMENTS** | Flatten nested objects for Typesense <0.24 | No | false |
 | **LOG_TYPESENSE_INSERTS** | Log inserted documents for debugging | No | false |
 | **INCLUDE_FIRESTORE_PATH** | Include `_path` field with Firestore document path | No | false |
+| **SCHEDULED_SYNC_INTERVAL** | Automatic sync schedule (cron expression or predefined interval) | No | never |
 
 ### Typesense Connection Requirements
 
@@ -141,6 +142,31 @@ db.collection('typesense_manual_sync').add({
 - Unmatched paths are skipped with an error message
 - Processing is sequential to ensure order
 - Document ID in `typesense_manual_sync` can be anything
+
+### Scheduled Sync (`scheduled_sync`)
+
+Automatically syncs all configured collections at predefined intervals.
+
+**Configuration Options:**
+- Never (disabled) - default
+- Every 15, 30 minutes
+- Every 1, 2, 6, 12 hours
+- Daily at midnight or 2 AM
+- Weekly on Sunday at 2 AM
+
+**Example Configuration:**
+Set `SCHEDULED_SYNC_INTERVAL` during installation to one of:
+- `never` - Disabled (default)
+- `*/15 * * * *` - Every 15 minutes
+- `0 * * * *` - Every hour
+- `0 0 * * *` - Daily at midnight
+- `0 2 * * 0` - Weekly on Sunday at 2 AM
+
+**Notes:**
+- Syncs ALL collections defined in `COLLECTIONS_CONFIG`
+- Runs sequentially to avoid overwhelming the system
+- Includes retry logic with exponential backoff
+- Logs detailed progress in Cloud Functions logs
 
 ## 🔍 Special Fields
 
@@ -320,6 +346,7 @@ Apache-2.0 License - see LICENSE file for details
 - Enhanced manual sync with custom paths support
 - Added ID field preservation
 - Added optional path tracking
+- Added scheduled sync functionality with configurable intervals
 - Improved wildcard pattern matching
 - Sequential processing for reliability
 

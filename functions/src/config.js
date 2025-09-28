@@ -35,4 +35,5 @@ module.exports = {
   typesenseAPIKey: process.env.TYPESENSE_API_KEY,
   typesenseManualSyncCollection: "typesense_manual_sync",
   typesenseBackfillBatchSize: 1000,
+  scheduledSyncInterval: process.env.SCHEDULED_SYNC_INTERVAL,
 };

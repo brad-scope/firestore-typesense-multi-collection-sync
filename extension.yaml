@@ -61,6 +61,22 @@ resources:
             value: typesense_manual_sync/{documentId}
             operator: match-path-pattern
 
+  - name: scheduled_sync
+    description: >-
+      A scheduled function that automatically syncs all configured collections to Typesense
+      at the interval specified by SCHEDULED_SYNC_INTERVAL parameter.
+    type: firebaseextensions.v1beta.v2function
+    properties:
+      location: ${LOCATION}
+      buildConfig:
+        runtime: nodejs22
+      sourceDirectory: functions
+      serviceConfig:
+        timeoutSeconds: 540
+        availableMemory: 2048M
+      scheduleTrigger:
+        schedule: ${SCHEDULED_SYNC_INTERVAL}
+
 roles:
   - role: datastore.user
     reason: Required to backfill data from your Firestore collection into Typesense
@@ -363,4 +379,34 @@ params:
       - label: Yes
         value: true
     default: false
+    required: false
+  - param: SCHEDULED_SYNC_INTERVAL
+    label: Scheduled Sync Interval
+    description: >-
+      Enable automatic scheduled synchronization of all configured collections to Typesense.
+      Choose how often the sync should run. Set to "Never" to disable scheduled syncing.
+      Note: This will sync ALL configured collections each time it runs.
+    type: select
+    options:
+      - label: Never (disabled)
+        value: "never"
+      - label: Every 15 minutes
+        value: "*/15 * * * *"
+      - label: Every 30 minutes
+        value: "*/30 * * * *"
+      - label: Every hour
+        value: "0 * * * *"
+      - label: Every 2 hours
+        value: "0 */2 * * *"
+      - label: Every 6 hours
+        value: "0 */6 * * *"
+      - label: Every 12 hours
+        value: "0 */12 * * *"
+      - label: Daily at midnight
+        value: "0 0 * * *"
+      - label: Daily at 2 AM
+        value: "0 2 * * *"
+      - label: Weekly on Sunday at 2 AM
+        value: "0 2 * * 0"
+    default: "never"
     required: false
