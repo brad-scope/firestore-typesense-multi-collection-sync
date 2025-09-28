@@ -1,3 +1,36 @@
+## Version 3.0.0
+
+### Major Enhancement Release - Multi-Collection Support
+
+This is a fork and major enhancement of the original Typesense Firebase extension by Brad Mallow at Scope Inspections.
+
+#### Breaking Changes
+- Extension renamed to `firestore-typesense-multi-collection-sync`
+- Changed trigger mechanism for manual sync (now uses any document creation in `typesense_manual_sync`)
+- Functions renamed: `indexOnWrite` → `automatic_sync`, `backfill` → `manual_sync`
+
+#### New Features
+- **Multi-Collection Support**: Sync multiple Firestore collections from a single extension installation
+- **JSON Configuration**: Define all collections in one `COLLECTIONS_CONFIG` parameter
+- **Selective Manual Sync**: Sync specific documents or collections on demand via paths array
+- **Scheduled Sync**: Optional periodic sync at configurable intervals
+- **ID Field Preservation**: Existing `id` fields are preserved as `_id`
+- **Path Tracking**: Optional `_path` field to track source document paths
+- **Sync Status Tracking**: Real-time metadata updates during manual sync operations
+- **Wildcard Support**: Both `*` and `{paramName}` syntaxes supported for subcollections
+- **Collection Group Queries**: Efficient subcollection syncing across document hierarchies
+
+#### Improvements
+- Single wildcard trigger with efficient path matching
+- Sequential processing for reliability
+- Detailed sync progress reporting
+- Better error handling and logging
+
+#### Configuration
+- Replaced individual collection parameters with unified `COLLECTIONS_CONFIG` JSON
+- Added `INCLUDE_FIRESTORE_PATH` parameter for optional path tracking
+- Added `SCHEDULED_SYNC_INTERVAL` parameter for periodic syncs
+
 ## Version 2.1.0
 
 - Allow region configuration to be mutable
