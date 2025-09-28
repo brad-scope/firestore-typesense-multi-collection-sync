@@ -9,7 +9,7 @@ const app = firebase.initializeApp({
 });
 const firestore = app.firestore();
 
-describe("indexOnWrite", () => {
+describe("automaticSync", () => {
   beforeEach(async () => {
     // delete the Firestore collection
     await firestore.recursiveDelete(firestore.collection(config.firestoreCollectionPath));

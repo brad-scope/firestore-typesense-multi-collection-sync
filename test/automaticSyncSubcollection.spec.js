@@ -4,7 +4,7 @@ const {TestEnvironment} = require("./support/testEnvironment");
 const TEST_FIRESTORE_PARENT_COLLECTION_PATH = "users";
 const TEST_FIRESTORE_CHILD_FIELD_NAME = "books";
 
-describe("indexOnWriteSubcollection", () => {
+describe("automaticSyncSubcollection", () => {
   let testEnvironment;
 
   const parentCollectionPath = TEST_FIRESTORE_PARENT_COLLECTION_PATH;

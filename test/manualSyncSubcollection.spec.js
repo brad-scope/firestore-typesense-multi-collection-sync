@@ -4,11 +4,11 @@ const {TestEnvironment} = require("./support/testEnvironment");
 const TEST_FIRESTORE_PARENT_COLLECTION_PATH = "users";
 const TEST_FIRESTORE_CHILD_FIELD_NAME = "books";
 
-describe("backfillSubcollection", () => {
+describe("manualSyncSubcollection", () => {
   let testEnvironment;
 
   const parentCollectionPath = TEST_FIRESTORE_PARENT_COLLECTION_PATH;
-  const unrelatedCollectionPath = "unrelatedCollectionToNotBackfill";
+  const unrelatedCollectionPath = "unrelatedCollectionToNotSync";
   const childFieldName = TEST_FIRESTORE_CHILD_FIELD_NAME;
   let parentIdField = null;
 
