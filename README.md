@@ -164,8 +164,12 @@ Triggered by creating a document in the `typesense_manual_sync` collection.
 #### Sync All Configured Collections
 ```javascript
 // Creates a document that triggers sync of all collections
+// No fields are required - an empty document works
+db.collection('typesense_manual_sync').add({});
+
+// Optional: include a timestamp for your own tracking
 db.collection('typesense_manual_sync').add({
-  timestamp: new Date()
+  timestamp: new Date()  // Optional field
 });
 ```
 
@@ -177,8 +181,7 @@ db.collection('typesense_manual_sync').add({
     "users/user123",                  // Specific user document
     "products/prod456/reviews",       // All reviews for product prod456
     "products/prod789/reviews/rev001" // Specific review document
-  ],
-  timestamp: new Date()
+  ]
 });
 ```
 
@@ -209,8 +212,7 @@ The trigger document is automatically updated with metadata during the sync proc
 ```javascript
 // Create trigger document and get reference
 const docRef = await db.collection('typesense_manual_sync').add({
-  paths: ["users", "products"],
-  timestamp: new Date()
+  paths: ["users", "products"]
 });
 
 // Monitor the document for updates
