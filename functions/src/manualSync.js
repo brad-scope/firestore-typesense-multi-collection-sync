@@ -145,32 +145,56 @@ async function syncCollection(collectionConfig, typesense, specificPath = null) 
   const pathToSync = specificPath || collectionConfig.firestorePath;
 
   info(
-    "Syncing " +
+    "[SYNC START] Syncing " +
       `${collectionConfig.firestoreFields.length > 0 ? collectionConfig.firestoreFields.join(",") : "all"} fields in Firestore documents ` +
       `from ${pathToSync} ` +
       `into Typesense Collection ${collectionConfig.typesenseCollection}`,
   );
 
+  // Log the raw configuration being used
+  info(`[CONFIG] Using configuration: ${JSON.stringify(collectionConfig)}`);
+
   const pathSegments = pathToSync.split("/").filter(Boolean);
   const pathPlaceholders = utils.parseFirestorePath(pathToSync);
   const isGroupQuery = pathSegments.length > 1 && utils.hasWildcard(pathToSync);
 
+  info(`[QUERY TYPE] Path segments: ${JSON.stringify(pathSegments)}, Is group query: ${isGroupQuery}, Has wildcards: ${utils.hasWildcard(pathToSync)}`);
+
   let querySnapshot;
   if (isGroupQuery) {
     const collectionGroup = pathSegments[pathSegments.length - 1];
+    info(`[COLLECTION GROUP] Using collection group query for: ${collectionGroup}`);
     querySnapshot = admin.firestore().collectionGroup(collectionGroup);
   } else {
+    info(`[COLLECTION] Using standard collection query for: ${pathToSync}`);
     querySnapshot = admin.firestore().collection(pathToSync);
   }
 
   let lastDoc = null;
   let totalImported = 0;
   let errors = [];
+  let batchNumber = 0;
+  let totalDocumentsFound = 0;
+  let skippedDocuments = 0;
+
+  info(`[BATCH CONFIG] Using batch size: ${config.typesenseBackfillBatchSize}`);
 
   do {
+    batchNumber++;
+
+    // Add safety check for infinite loops
+    if (batchNumber > 1000) {
+      error(`[SAFETY] Stopping after 1000 batches to prevent infinite loop. Processed ${totalImported} documents so far.`);
+      break;
+    }
     const queryForThisBatch = lastDoc ? querySnapshot.startAfter(lastDoc) : querySnapshot;
     const thisBatch = await queryForThisBatch.limit(config.typesenseBackfillBatchSize).get();
+
+    info(`[BATCH ${batchNumber}] Fetched ${thisBatch.size} documents from Firestore`);
+    totalDocumentsFound += thisBatch.size;
+
     if (thisBatch.empty) {
+      info(`[BATCH ${batchNumber}] No more documents to process`);
       break;
     }
     const currentDocumentsBatch = (
@@ -182,8 +206,11 @@ async function syncCollection(collectionConfig, typesense, specificPath = null) 
           if (isGroupQuery) {
             const pathParams = utils.pathMatchesSelector(docPath, collectionConfig.firestorePath);
             if (pathParams === null) {
+              debug(`[SKIP] Document ${docPath} doesn't match pattern ${collectionConfig.firestorePath}`);
+              skippedDocuments++;
               return null;
             }
+            debug(`[MATCH] Document ${docPath} matches pattern ${collectionConfig.firestorePath}`);
           }
 
           const pathParams = utils.pathMatchesSelector(docPath, collectionConfig.firestorePath) || {};
@@ -197,32 +224,48 @@ async function syncCollection(collectionConfig, typesense, specificPath = null) 
       )
     ).filter((doc) => doc !== null);
 
+    info(`[BATCH ${batchNumber}] Prepared ${currentDocumentsBatch.length} documents for Typesense (${skippedDocuments} skipped so far)`);
+
     lastDoc = thisBatch.docs.at(-1) ?? null;
     try {
-      await typesense.collections(encodeURIComponent(collectionConfig.typesenseCollection)).documents().import(currentDocumentsBatch, {action: "upsert", return_id: true});
+      const importResult = await typesense.collections(encodeURIComponent(collectionConfig.typesenseCollection)).documents().import(currentDocumentsBatch, {action: "upsert", return_id: true});
       totalImported += currentDocumentsBatch.length;
-      info(`Imported ${currentDocumentsBatch.length} documents into Typesense collection ${collectionConfig.typesenseCollection} (total: ${totalImported})`);
+      info(`[BATCH ${batchNumber} SUCCESS] Imported ${currentDocumentsBatch.length} documents into Typesense collection ${collectionConfig.typesenseCollection} (total imported: ${totalImported}/${totalDocumentsFound})`);
     } catch (err) {
-      error(`Import error in a batch of documents from ${currentDocumentsBatch[0]?.id} to ${lastDoc?.id} for collection ${collectionConfig.typesenseCollection}`, err);
+      error(`[BATCH ${batchNumber} ERROR] Import error in a batch of documents from ${currentDocumentsBatch[0]?.id} to ${lastDoc?.id} for collection ${collectionConfig.typesenseCollection}`, err);
       if ("importResults" in err) {
         logImportErrors(err.importResults);
       }
       errors.push({
         collection: collectionConfig.typesenseCollection,
         error: err.message,
-        batch: `${currentDocumentsBatch[0]?.id} to ${lastDoc?.id}`
+        batch: `${currentDocumentsBatch[0]?.id} to ${lastDoc?.id}`,
+        batchNumber: batchNumber,
+        documentsInBatch: currentDocumentsBatch.length
       });
+
+      // Don't stop on error - continue with next batch
+      error(`[BATCH ${batchNumber}] Continuing despite error...`);
     }
 
-    if (currentDocumentsBatch.length < config.typesenseBackfillBatchSize) {
+    // Check if we should continue
+    if (thisBatch.size < config.typesenseBackfillBatchSize) {
+      info(`[BATCH ${batchNumber}] Batch size ${thisBatch.size} is less than max ${config.typesenseBackfillBatchSize}, stopping`);
       break;
+    } else {
+      info(`[BATCH ${batchNumber}] Batch full (${thisBatch.size}), continuing to next batch`);
     }
     // Recurse on the next process tick, to avoid
     // issues with the event loop on firebase functions related to resource release
     await new Promise((resolve) => process.nextTick(resolve));
   } while (lastDoc);
 
-  info(`Done syncing ${totalImported} documents from ${pathToSync} to Typesense collection ${collectionConfig.typesenseCollection}`);
+  info(`[SYNC COMPLETE] Done syncing ${pathToSync} to ${collectionConfig.typesenseCollection}`);
+  info(`[STATS] Total documents found: ${totalDocumentsFound}, Imported: ${totalImported}, Skipped: ${skippedDocuments}, Errors: ${errors.length}`);
+
+  if (totalImported < totalDocumentsFound - skippedDocuments) {
+    error(`[WARNING] Not all documents were imported! Expected ${totalDocumentsFound - skippedDocuments}, got ${totalImported}`);
+  }
   return {
     success: errors.length === 0,
     documentsProcessed: totalImported,
@@ -274,7 +317,8 @@ module.exports = onDocumentCreated("typesense_manual_sync/{documentId}", async (
   const triggerData = snapshot.data();
   const documentId = event.params.documentId;
 
-  info(`Manual sync triggered by document ${documentId}`);
+  info(`[MANUAL SYNC START] Triggered by document ${documentId} at ${new Date().toISOString()}`);
+  info(`[TRIGGER DATA] ${JSON.stringify(triggerData)}`);
 
   // Update document with sync start metadata
   const startTime = new Date();
@@ -335,7 +379,8 @@ module.exports = onDocumentCreated("typesense_manual_sync/{documentId}", async (
     } else {
       // No custom paths specified, sync all configured collections
       if (config.collectionsConfig && config.collectionsConfig.length > 0) {
-        info(`Syncing all ${config.collectionsConfig.length} configured collections sequentially`);
+        info(`[AUTO SYNC] Syncing all ${config.collectionsConfig.length} configured collections sequentially`);
+        info(`[COLLECTIONS CONFIG] ${JSON.stringify(config.collectionsConfig)}`);
 
         // Process each collection sequentially
         for (const collectionConfig of config.collectionsConfig) {
