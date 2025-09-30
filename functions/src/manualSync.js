@@ -227,29 +227,35 @@ async function syncCollection(collectionConfig, typesense, specificPath = null) 
     info(`[BATCH ${batchNumber}] Prepared ${currentDocumentsBatch.length} documents for Typesense (${skippedDocuments} skipped so far)`);
 
     lastDoc = thisBatch.docs.at(-1) ?? null;
+
     try {
-      const importResult = await typesense.collections(encodeURIComponent(collectionConfig.typesenseCollection)).documents().import(currentDocumentsBatch, {action: "upsert", return_id: true});
+      await typesense
+        .collections(encodeURIComponent(collectionConfig.typesenseCollection))
+        .documents()
+        .import(currentDocumentsBatch, {
+          action: "upsert",
+          return_id: true,
+        });
+
       totalImported += currentDocumentsBatch.length;
+
       info(`[BATCH ${batchNumber} SUCCESS] Imported ${currentDocumentsBatch.length} documents into Typesense collection ${collectionConfig.typesenseCollection} (total imported: ${totalImported}/${totalDocumentsFound})`);
     } catch (err) {
       error(`[BATCH ${batchNumber} ERROR] Import error in a batch of documents from ${currentDocumentsBatch[0]?.id} to ${lastDoc?.id} for collection ${collectionConfig.typesenseCollection}`, err);
 
       let detailedErrors = [];
+
       if ("importResults" in err) {
         logImportErrors(err.importResults);
         // Extract detailed error information from failed documents
         detailedErrors = err.importResults
           .filter((result) => !result.success)
-          .map((result) => {
-            const errorDetail = {
-              error: result.error || "Unknown error"
-            };
-            // Only add fields if they have values (Firestore doesn't allow undefined)
-            if (result.document?.id) errorDetail.documentId = result.document.id;
-            if (result.document?._path) errorDetail.documentPath = result.document._path;
-            if (result.code) errorDetail.code = result.code;
-            return errorDetail;
-          });
+          .map((result) => ({
+            error: result.error ?? "Unknown error",
+            documentId : result.document.id ?? null,
+            documentPath : result.document?._path ?? null,
+            code : result.code ?? null,
+          }));
       }
 
       const errorEntry = {
@@ -483,6 +489,11 @@ module.exports = onDocumentCreated("typesense_manual_sync/{documentId}", async (
     syncResults.duration = `${(endTime - startTime) / 1000}s`;
     syncResults.success = syncResults.totalErrors === 0;
 
+    // Log error summary if there were errors
+    if (syncResults.totalErrors > 0) {
+      logErrorSummary(syncResults);
+    }
+
     // Update document with sync completion metadata
     try {
       await documentRef.update({
@@ -526,9 +537,95 @@ function logImportErrors(importResults) {
   importResults.forEach((result) => {
     if (result.success) return;
 
-    debug('--- BRAD DEV LOGGING --- ' + JSON.stringify(result));
-
     const docPath = result.document?._path || result.document?.id || 'unknown';
+
     error(`Error importing document ${docPath} with error: ${result.error}`, result);
+  });
+}
+
+/**
+ * Analyze sync errors and generate a summary with field-level error counts
+ * @param {Object} syncResults - The sync results object containing errors
+ * @returns {Object} Summary of errors by field and collection
+ */
+function analyzeErrorSummary(syncResults) {
+  const fieldErrorCounts = {}; // { fieldName: count }
+  const fieldToCollections = {}; // { fieldName: Set<typesenseCollection> }
+
+  // Build map of fields from all collections config
+  const collectionFieldMap = {}; // { typesenseCollection: [fields] }
+  if (config.collectionsConfig) {
+    config.collectionsConfig.forEach(cfg => {
+      collectionFieldMap[cfg.typesenseCollection] = cfg.firestoreFields || [];
+    });
+  }
+
+  // Process all errors from collections
+  const allCollectionResults = [
+    ...(syncResults.collections || []),
+    ...(syncResults.paths || [])
+  ];
+
+  allCollectionResults.forEach(collectionResult => {
+    if (!collectionResult.errors || collectionResult.errors.length === 0) return;
+
+    collectionResult.errors.forEach(errorEntry => {
+      if (!errorEntry.detailedErrors) return;
+
+      errorEntry.detailedErrors.forEach(detailedError => {
+        // Extract field name from error message
+        // Pattern: "Field `fieldName` has been declared in the schema, but is not found in the document."
+        const match = detailedError.error.match(/Field `([^`]+)` has been declared in the schema/);
+        if (match) {
+          const fieldName = match[1];
+
+          // Increment count
+          fieldErrorCounts[fieldName] = (fieldErrorCounts[fieldName] || 0) + 1;
+
+          // Track which collection this came from
+          if (!fieldToCollections[fieldName]) {
+            fieldToCollections[fieldName] = new Set();
+          }
+          if (collectionResult.typesenseCollection) {
+            fieldToCollections[fieldName].add(collectionResult.typesenseCollection);
+          }
+        }
+      });
+    });
+  });
+
+  return {
+    fieldErrorCounts,
+    fieldToCollections: Object.fromEntries(
+      Object.entries(fieldToCollections).map(([field, collections]) => [field, Array.from(collections)])
+    ),
+    collectionFieldMap
+  };
+}
+
+/**
+ * Log error summary at the end of sync
+ * @param {Object} syncResults - The sync results object
+ */
+function logErrorSummary(syncResults) {
+  if (syncResults.totalErrors === 0) return;
+
+  const summary = analyzeErrorSummary(syncResults);
+
+  if (Object.keys(summary.fieldErrorCounts).length === 0) return;
+
+  info(`[ERROR SUMMARY] Field-level error breakdown:`);
+
+  // Sort fields by error count (descending)
+  const sortedFields = Object.entries(summary.fieldErrorCounts)
+    .sort(([, a], [, b]) => b - a);
+
+  sortedFields.forEach(([fieldName, count]) => {
+    const collections = summary.fieldToCollections[fieldName] || [];
+    const collectionInfo = collections.length > 0
+      ? ` (from collections: ${collections.join(', ')})`
+      : '';
+
+    error(`  - Field '${fieldName}': ${count} error${count > 1 ? 's' : ''}${collectionInfo}`);
   });
 }
