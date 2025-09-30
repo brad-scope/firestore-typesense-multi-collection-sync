@@ -27,6 +27,8 @@ resources:
         runtime: nodejs22
       serviceConfig:
         timeoutSeconds: 540
+        invoker:
+          - eventarc-trigger@${PROJECT_ID}.iam.gserviceaccount.com
       eventTrigger:
         eventType: google.cloud.firestore.document.v1.written
         triggerRegion: ${FIRESTORE_DATABASE_REGION}
@@ -51,6 +53,8 @@ resources:
       serviceConfig:
         timeoutSeconds: 540
         availableMemory: 2048M
+        invoker:
+          - eventarc-trigger@${PROJECT_ID}.iam.gserviceaccount.com
       eventTrigger:
         eventType: google.cloud.firestore.document.v1.created
         triggerRegion: ${FIRESTORE_DATABASE_REGION}
@@ -74,6 +78,8 @@ resources:
       serviceConfig:
         timeoutSeconds: 540
         availableMemory: 2048M
+        invoker:
+          - scheduler-trigger@${PROJECT_ID}.iam.gserviceaccount.com
 
 roles:
   - role: datastore.user
