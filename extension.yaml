@@ -1,5 +1,5 @@
 name: firestore-typesense-multi-sync
-version: 1.0.0
+version: 1.2.0
 specVersion: v1beta # Firebase Extensions specification version (do not edit)
 
 displayName: Multi-Collection Firestore to Typesense Sync
