@@ -516,6 +516,8 @@ function logImportErrors(importResults) {
   importResults.forEach((result) => {
     if (result.success) return;
 
+    debug('--- BRAD DEV LOGGING ---', result);
+
     const docPath = result.document?._path || result.document?.id || 'unknown';
     error(`Error importing document ${docPath} with error: ${result.error}`, result);
   });
