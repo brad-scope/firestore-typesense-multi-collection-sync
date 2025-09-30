@@ -233,12 +233,25 @@ async function syncCollection(collectionConfig, typesense, specificPath = null) 
       info(`[BATCH ${batchNumber} SUCCESS] Imported ${currentDocumentsBatch.length} documents into Typesense collection ${collectionConfig.typesenseCollection} (total imported: ${totalImported}/${totalDocumentsFound})`);
     } catch (err) {
       error(`[BATCH ${batchNumber} ERROR] Import error in a batch of documents from ${currentDocumentsBatch[0]?.id} to ${lastDoc?.id} for collection ${collectionConfig.typesenseCollection}`, err);
+
+      let detailedErrors = [];
       if ("importResults" in err) {
         logImportErrors(err.importResults);
+        // Extract detailed error information from failed documents
+        detailedErrors = err.importResults
+          .filter((result) => !result.success)
+          .map((result) => ({
+            documentId: result.document?.id,
+            documentPath: result.document?._path,
+            error: result.error,
+            code: result.code
+          }));
       }
+
       errors.push({
         collection: collectionConfig.typesenseCollection,
         error: err.message,
+        detailedErrors: detailedErrors.length > 0 ? detailedErrors : undefined,
         batch: `${currentDocumentsBatch[0]?.id} to ${lastDoc?.id}`,
         batchNumber: batchNumber,
         documentsInBatch: currentDocumentsBatch.length
