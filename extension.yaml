@@ -2,8 +2,8 @@ name: firestore-typesense-multi-sync
 version: 1.2.1
 specVersion: v1beta # Firebase Extensions specification version (do not edit)
 
-displayName: Multi-Collection Firestore to Typesense Sync
-description: Sync multiple Firestore collections to Typesense with enhanced configuration options
+displayName: Multi-Collection Firestore Typesense Sync
+description: Sync multiple Firestore collections or subcollections to Typesense with enhanced configuration options
 
 license: Apache-2.0 # The license you want for the extension
 
