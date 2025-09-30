@@ -3,6 +3,51 @@
 Your Firestore Typesense Multi-Collection Sync extension is now installed and ready to sync your configured collections
 to Typesense.
 
+### ⚠️ Required Manual Configuration (Cloud Functions v2)
+
+Due to a known limitation with Firebase Extensions using Cloud Functions v2, you need to **manually grant IAM permissions** for the extension to work. By default, the functions are configured to require authentication, but the necessary service accounts don't have permission to invoke them.
+
+**You have two options:**
+
+#### Option A: Quick Setup (Allow Public Access)
+1. Go to the [Cloud Run console](https://console.cloud.google.com/run)
+2. For each of these services, click on it and go to the "Security" tab:
+   - `ext-firestore-typesense-multi-sync-automatic_sync`
+   - `ext-firestore-typesense-multi-sync-manual_sync`
+   - `ext-firestore-typesense-multi-sync-scheduled_sync`
+3. Select "Allow unauthenticated invocations"
+4. Click "Save"
+
+⚠️ **Note:** This makes the Cloud Run endpoints publicly accessible, though they still require proper event payloads to trigger.
+
+#### Option B: Secure Setup (Grant Specific IAM Permissions)
+Manually grant the Cloud Run Invoker role to the appropriate service accounts:
+
+For `automatic_sync` and `manual_sync`:
+```bash
+gcloud run services add-iam-policy-binding ext-firestore-typesense-multi-sync-automatic_sync \
+  --region=YOUR_REGION \
+  --member="serviceAccount:eventarc-trigger@YOUR_PROJECT_ID.iam.gserviceaccount.com" \
+  --role="roles/run.invoker"
+
+gcloud run services add-iam-policy-binding ext-firestore-typesense-multi-sync-manual_sync \
+  --region=YOUR_REGION \
+  --member="serviceAccount:eventarc-trigger@YOUR_PROJECT_ID.iam.gserviceaccount.com" \
+  --role="roles/run.invoker"
+```
+
+For `scheduled_sync`:
+```bash
+gcloud run services add-iam-policy-binding ext-firestore-typesense-multi-sync-scheduled_sync \
+  --region=YOUR_REGION \
+  --member="serviceAccount:scheduler-trigger@YOUR_PROJECT_ID.iam.gserviceaccount.com" \
+  --role="roles/run.invoker"
+```
+
+Replace `YOUR_REGION` with your function's region (e.g., `us-central1`) and `YOUR_PROJECT_ID` with your Firebase project ID.
+
+**Note:** This is a one-time setup after installation or updates. We're working on automating this step in future versions.
+
 ### Configuration Summary
 
 The extension is configured to sync the following collections:

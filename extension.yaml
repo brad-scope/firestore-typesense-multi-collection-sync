@@ -27,7 +27,6 @@ resources:
         runtime: nodejs22
       serviceConfig:
         timeoutSeconds: 540
-        serviceAccountEmail: ${PARAM:PROJECT_ID}@appspot.gserviceaccount.com
       eventTrigger:
         eventType: google.cloud.firestore.document.v1.written
         triggerRegion: ${FIRESTORE_DATABASE_REGION}
@@ -37,7 +36,6 @@ resources:
           - attribute: document
             value: "{path=**}"
             operator: match-path-pattern
-        serviceAccountEmail: eventarc-trigger@${PARAM:PROJECT_ID}.iam.gserviceaccount.com
 
   - name: manual_sync
     description: >-
@@ -53,7 +51,6 @@ resources:
       serviceConfig:
         timeoutSeconds: 540
         availableMemory: 2048M
-        serviceAccountEmail: ${PARAM:PROJECT_ID}@appspot.gserviceaccount.com
       eventTrigger:
         eventType: google.cloud.firestore.document.v1.created
         triggerRegion: ${FIRESTORE_DATABASE_REGION}
@@ -63,7 +60,6 @@ resources:
           - attribute: document
             value: typesense_manual_sync/{documentId}
             operator: match-path-pattern
-        serviceAccountEmail: eventarc-trigger@${PARAM:PROJECT_ID}.iam.gserviceaccount.com
 
   - name: scheduled_sync
     description: >-
@@ -78,7 +74,6 @@ resources:
       serviceConfig:
         timeoutSeconds: 540
         availableMemory: 2048M
-        serviceAccountEmail: ${PARAM:PROJECT_ID}@appspot.gserviceaccount.com
 
 roles:
   - role: datastore.user
