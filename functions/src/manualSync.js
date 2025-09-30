@@ -240,22 +240,32 @@ async function syncCollection(collectionConfig, typesense, specificPath = null) 
         // Extract detailed error information from failed documents
         detailedErrors = err.importResults
           .filter((result) => !result.success)
-          .map((result) => ({
-            documentId: result.document?.id,
-            documentPath: result.document?._path,
-            error: result.error,
-            code: result.code
-          }));
+          .map((result) => {
+            const errorDetail = {
+              error: result.error || "Unknown error"
+            };
+            // Only add fields if they have values (Firestore doesn't allow undefined)
+            if (result.document?.id) errorDetail.documentId = result.document.id;
+            if (result.document?._path) errorDetail.documentPath = result.document._path;
+            if (result.code) errorDetail.code = result.code;
+            return errorDetail;
+          });
       }
 
-      errors.push({
+      const errorEntry = {
         collection: collectionConfig.typesenseCollection,
         error: err.message,
-        detailedErrors: detailedErrors.length > 0 ? detailedErrors : undefined,
         batch: `${currentDocumentsBatch[0]?.id} to ${lastDoc?.id}`,
         batchNumber: batchNumber,
         documentsInBatch: currentDocumentsBatch.length
-      });
+      };
+
+      // Only add detailedErrors if we have them (avoid undefined in Firestore)
+      if (detailedErrors.length > 0) {
+        errorEntry.detailedErrors = detailedErrors;
+      }
+
+      errors.push(errorEntry);
 
       // Don't stop on error - continue with next batch
       error(`[BATCH ${batchNumber}] Continuing despite error...`);
