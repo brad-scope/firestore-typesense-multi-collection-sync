@@ -516,6 +516,7 @@ function logImportErrors(importResults) {
   importResults.forEach((result) => {
     if (result.success) return;
 
-    error(`Error importing document with error: ${result.error}`, result);
+    const docPath = result.document?._path || result.document?.id || 'unknown';
+    error(`Error importing document ${docPath} with error: ${result.error}`, result);
   });
 }
