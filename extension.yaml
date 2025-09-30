@@ -1,5 +1,5 @@
 name: firestore-typesense-multi-sync
-version: 1.2.0
+version: 1.2.1
 specVersion: v1beta # Firebase Extensions specification version (do not edit)
 
 displayName: Multi-Collection Firestore to Typesense Sync
@@ -116,13 +116,13 @@ params:
         value: northamerica-northeast1
       - label: northamerica-northeast2 (Toronto)
         value: northamerica-northeast2
-      
+
       # South America
       - label: southamerica-east1 (Sao Paulo)
         value: southamerica-east1
       - label: southamerica-west1 (Santiago)
         value: southamerica-west1
-      
+
       # Europe
       - label: europe-north1 (Finland)
         value: europe-north1
@@ -148,7 +148,7 @@ params:
         value: europe-central2
       - label: europe-southwest1 (Madrid)
         value: europe-southwest1
-      
+
       # Middle East
       - label: me-central1 (Doha)
         value: me-central1
@@ -156,7 +156,7 @@ params:
         value: me-central2
       - label: me-west1 (Tel Aviv)
         value: me-west1
-      
+
       # Asia
       - label: asia-east1 (Taiwan)
         value: asia-east1
@@ -176,7 +176,7 @@ params:
         value: asia-southeast1
       - label: asia-southeast2 (Jakarta)
         value: asia-southeast2
-      
+
       # Australia
       - label: australia-southeast1 (Sydney)
         value: australia-southeast1
@@ -343,7 +343,7 @@ params:
   - param: FLATTEN_NESTED_DOCUMENTS
     label: Flatten Nested Documents
     description: >-
-      Should nested documents in Firestore be flattened by this extension before they are indexed in Typesense? 
+      Should nested documents in Firestore be flattened by this extension before they are indexed in Typesense?
       Set to "Yes" for Typesense versions 0.23.1 and earlier. Set to "No" for Typesense versions 0.24.0 and later.
     type: select
     options:
