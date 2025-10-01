@@ -137,6 +137,6 @@ If documents aren't syncing:
 
 ### Support
 
-- [Extension Documentation](https://github.com/brad-scope/firestore-typesense-multi-sync)
-- [Report Issues](https://github.com/brad-scope/firestore-typesense-multi-sync/issues)
+- [Extension Documentation](https://github.com/inspect-scope/firestore-typesense-multi-sync)
+- [Report Issues](https://github.com/inspect-scope/firestore-typesense-multi-sync/issues)
 - [Typesense Documentation](https://typesense.org/docs/)

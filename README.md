@@ -40,13 +40,13 @@ Before installing this extension, ensure you have:
 ### Via Firebase Console
 
 ```bash
-firebase ext:install brad-scope/firestore-typesense-multi-sync
+firebase ext:install inspect-scope/firestore-typesense-multi-sync
 ```
 
 ### Via Firebase CLI
 
 ```bash
-firebase ext:install brad-scope/firestore-typesense-multi-sync --project=[your-project-id]
+firebase ext:install inspect-scope/firestore-typesense-multi-sync --project=[your-project-id]
 ```
 
 ## ⚙️ Configuration
@@ -450,7 +450,7 @@ Apache-2.0 License - see LICENSE file for details
 
 ## 📞 Support
 
-- **Issues**: [GitHub Issues](https://github.com/brad-scope/firestore-typesense-multi-sync/issues)
+- **Issues**: [GitHub Issues](https://github.com/inspect-scope/firestore-typesense-multi-sync/issues)
 - **Original Extension**: [Typesense Firebase Extension](https://github.com/typesense/firestore-typesense-search)
 - **Typesense Community**: [Slack](https://join.slack.com/t/typesense-community/shared_invite/zt-2fetvh0pw-ft5y2YQlq4l_bPhhqpjXig)
 

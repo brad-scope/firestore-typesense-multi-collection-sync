@@ -76,4 +76,4 @@ Tests use Firebase emulators with a local Typesense server running in Docker. Te
 1. Update version in `extension.yaml`
 2. Add entry to `CHANGELOG.md`
 3. Create GitHub release
-4. Run: `firebase ext:dev:upload brad-scope/firestore-typesense-multi-sync`
+4. Run: `firebase ext:dev:upload inspect-scope/firestore-typesense-multi-sync`
