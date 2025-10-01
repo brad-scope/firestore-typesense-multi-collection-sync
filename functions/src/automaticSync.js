@@ -119,7 +119,7 @@ exports.automaticSync = onDocumentWritten("{path=**}", async (event) => {
       return await typesense
         .collections(encodeURIComponent(matchedConfig.typesenseCollection))
         .documents()
-        .upsert(typesenseDocument);
+        .upsert(typesenseDocument, {dirty_values: config.dirtyValues});
     }
   } else if (config.firestoreCollectionPath) {
     // Fallback to legacy single collection config for backward compatibility
@@ -152,7 +152,7 @@ exports.automaticSync = onDocumentWritten("{path=**}", async (event) => {
       return await typesense
         .collections(encodeURIComponent(config.typesenseCollectionName))
         .documents()
-        .upsert(typesenseDocument);
+        .upsert(typesenseDocument, {dirty_values: config.dirtyValues});
     }
   } else {
     debug("No collection configuration found, skipping");

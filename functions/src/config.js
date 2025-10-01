@@ -26,6 +26,7 @@ try {
 console.log(`[CONFIG] Batch size: 1000`);
 console.log(`[CONFIG] Should flatten nested documents: ${process.env.FLATTEN_NESTED_DOCUMENTS === "true"}`);
 console.log(`[CONFIG] Should include Firestore path: ${process.env.INCLUDE_FIRESTORE_PATH === "true"}`);
+console.log(`[CONFIG] Dirty values handling: ${process.env.DIRTY_VALUES || "coerce_or_drop"}`);
 console.log(`[CONFIG] Scheduled sync interval: ${process.env.SCHEDULED_SYNC_INTERVAL}`);
 console.log(`[CONFIG] Typesense hosts: ${process.env.TYPESENSE_HOSTS}`);
 
@@ -45,6 +46,7 @@ module.exports = {
   shouldFlattenNestedDocuments: process.env.FLATTEN_NESTED_DOCUMENTS === "true",
   shouldLogTypesenseInserts: process.env.LOG_TYPESENSE_INSERTS === "true",
   shouldIncludeFirestorePath: process.env.INCLUDE_FIRESTORE_PATH === "true",
+  dirtyValues: process.env.DIRTY_VALUES || "coerce_or_drop",
   typesenseHosts: (process.env.TYPESENSE_HOSTS || "").split(",").map((e) => e.trim()),
   typesensePort: process.env.TYPESENSE_PORT || 443,
   typesenseProtocol: process.env.TYPESENSE_PROTOCOL || "https",

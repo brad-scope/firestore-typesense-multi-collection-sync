@@ -122,7 +122,7 @@ async function syncDocument(documentPath, collectionConfig, typesense) {
     await typesense
       .collections(encodeURIComponent(collectionConfig.typesenseCollection))
       .documents()
-      .upsert(typesenseDocument);
+      .upsert(typesenseDocument, {dirty_values: config.dirtyValues});
 
     info(`Successfully synced document ${documentPath} to Typesense collection ${collectionConfig.typesenseCollection}`);
     return {success: true, documentId: docId};
@@ -235,6 +235,7 @@ async function syncCollection(collectionConfig, typesense, specificPath = null) 
         .import(currentDocumentsBatch, {
           action: "upsert",
           return_id: true,
+          dirty_values: config.dirtyValues,
         });
 
       totalImported += currentDocumentsBatch.length;

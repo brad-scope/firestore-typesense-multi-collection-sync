@@ -380,6 +380,26 @@ params:
         value: true
     default: false
     required: false
+  - param: DIRTY_VALUES
+    label: Dirty Values Handling
+    description: >-
+      How to handle documents with field values that don't match the Typesense schema type.
+      'Coerce or Drop' (recommended) attempts to convert mismatched values and drops fields that can't be converted.
+      'Coerce or Reject' attempts conversion but rejects the entire document if conversion fails.
+      'Drop' immediately drops mismatched fields without attempting conversion.
+      'Reject' rejects any document with type mismatches.
+    type: select
+    options:
+      - label: Coerce or Drop (recommended - minimizes data loss)
+        value: coerce_or_drop
+      - label: Coerce or Reject (strict - rejects documents on conversion failure)
+        value: coerce_or_reject
+      - label: Drop (drops mismatched fields without conversion)
+        value: drop
+      - label: Reject (rejects documents with any type mismatch)
+        value: reject
+    default: coerce_or_drop
+    required: false
   - param: SCHEDULED_SYNC_INTERVAL
     label: Scheduled Sync Interval
     description: >-

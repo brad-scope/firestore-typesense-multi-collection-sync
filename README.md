@@ -135,9 +135,29 @@ Both wildcard syntaxes are supported and functionally equivalent:
 | **Firestore Database region** | Region of your Firestore database | Yes | nam5 |
 | **DATABASE** | Firestore database name | No | (default) |
 | **FLATTEN_NESTED_DOCUMENTS** | Flatten nested objects for Typesense <0.24 | No | false |
+| **DIRTY_VALUES** | How to handle data type mismatches ([docs](https://typesense.org/docs/29.0/api/documents.html#dealing-with-dirty-data)) | No | coerce_or_drop |
 | **LOG_TYPESENSE_INSERTS** | Log inserted documents for debugging | No | false |
 | **INCLUDE_FIRESTORE_PATH** | Include `_path` field with Firestore document path | No | false |
 | **SCHEDULED_SYNC_INTERVAL** | Automatic sync schedule (cron expression or predefined interval) | No | never |
+
+### Dirty Values Handling (DIRTY_VALUES)
+
+Controls how Typesense handles documents with field values that don't match the expected schema type. This helps minimize data loss when your Firestore data doesn't perfectly match your Typesense schema.
+
+| Value | Behavior |
+|-------|----------|
+| `coerce_or_drop` (default) | Attempts to convert the value to the expected type. If conversion fails, drops that field but indexes the rest of the document. **Recommended for minimal data loss.** |
+| `coerce_or_reject` | Attempts to convert the value. If conversion fails, rejects the entire document with an error. |
+| `drop` | Immediately drops fields with type mismatches without attempting conversion. |
+| `reject` | Rejects any document with type mismatches. |
+
+**Example:** If your Typesense schema expects `age` to be an integer but Firestore has `age: "25"` (string):
+- `coerce_or_drop`: Converts `"25"` → `25` and indexes the document
+- `coerce_or_reject`: Converts `"25"` → `25` and indexes the document
+- `drop`: Drops the `age` field but indexes the rest
+- `reject`: Rejects the entire document
+
+📖 **Learn more:** [Typesense Dirty Data Documentation](https://typesense.org/docs/29.0/api/documents.html#dealing-with-dirty-data)
 
 ### Typesense Connection Requirements
 
